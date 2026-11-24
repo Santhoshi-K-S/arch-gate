@@ -1,0 +1,18 @@
+title: URL shortener
+notes: Read-heavy redirects with hot links; needs unique short codes and click analytics.
+requirements:
+  name: URL Shortener
+  daily_active_users: 10_000_000
+  requests_per_user_per_day: 10
+  read_write_ratio: 100
+  avg_write_kb: 0.5
+  latency_p99_ms: 50
+  availability: 99.95
+  consistency: eventual
+  hot_keys: true
+  features: [analytics, short_links]
+expect:
+  must: [cache, id_generator, rate_limiter, event_stream, {any_of: [key_value_store, wide_column_store, postgres]}]
+  must_not: [websocket_gateway, sharded_sql, payment_gateway]
+  nice: [cdn, api_gateway, db_replicas, data_warehouse]
+  settings: {cache_strategy: cache-aside}

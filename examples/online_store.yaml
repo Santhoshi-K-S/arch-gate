@@ -1,0 +1,11 @@
+name: Online Store
+description: Product catalog, cart and checkout for a mid-size retailer.
+daily_active_users: 500_000
+requests_per_user_per_day: 40
+read_write_ratio: 20
+avg_write_kb: 4
+latency_p99_ms: 200
+availability: 99.95
+consistency: strong
+retention_years: 7
+features: [search, payments, notifications, recommendations]

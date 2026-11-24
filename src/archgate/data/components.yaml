@@ -1,0 +1,361 @@
+# Closed set of building blocks. The model can only pick from these ids.
+version: 2
+
+components:
+  # --- edge and entry ----------------------------------------------------
+  client:
+    label: Clients
+    kind: client
+  dns_geo:
+    label: Geo DNS
+    kind: network
+    tradeoff: Routes users to the nearest healthy region; adds DNS TTL lag on failover.
+  waf:
+    label: WAF / DDoS Protection
+    kind: network
+    tradeoff: Filters malicious traffic at the edge; needs tuning to avoid blocking real users.
+  cdn:
+    label: CDN
+    kind: network
+    tradeoff: Offloads static and media reads from origin; cache invalidation becomes a concern.
+  load_balancer:
+    label: Load Balancer
+    kind: network
+    tradeoff: Spreads traffic across stateless app instances; run it redundantly.
+  api_gateway:
+    label: API Gateway
+    kind: network
+    tradeoff: Central place for auth, routing and throttling; one more hop of latency.
+  rate_limiter:
+    label: Rate Limiter
+    kind: service
+    requires_any: [api_gateway]
+    tradeoff: Protects the backend from abuse; needs a shared counter store.
+
+  # --- identity and security ---------------------------------------------
+  auth_service:
+    label: Auth Service
+    kind: service
+  identity_provider:
+    label: Identity Provider (SSO / OIDC)
+    kind: service
+    tradeoff: Enterprise SSO and central user management; adds an external dependency on login.
+  secrets_manager:
+    label: Secrets Manager
+    kind: security
+    tradeoff: No credentials in code or config; services need a bootstrap identity.
+  kms:
+    label: Key Management (KMS)
+    kind: security
+    tradeoff: Central encryption keys and rotation; key loss means data loss.
+  tokenization_vault:
+    label: Tokenization Vault
+    kind: security
+    tradeoff: Keeps raw card or patient data out of most systems, shrinking compliance scope.
+  audit_log:
+    label: Audit Log (append-only)
+    kind: storage
+    tradeoff: Tamper-evident record of who did what; grows forever, plan retention.
+
+  # --- compute -----------------------------------------------------------
+  app_service:
+    label: App Service (stateless)
+    kind: service
+    tradeoff: Stateless instances scale horizontally behind the load balancer.
+  service_mesh:
+    label: Service Mesh
+    kind: ops
+    tradeoff: mTLS, retries and traffic shifting between services; real operational overhead.
+  websocket_gateway:
+    label: WebSocket Gateway
+    kind: service
+    tradeoff: Keeps long-lived connections; needs sticky routing and connection draining.
+  presence_service:
+    label: Presence Service
+    kind: service
+    requires_any: [pubsub, cache]
+    tradeoff: Tracks who is online; heartbeat traffic grows with connected users.
+  pubsub:
+    label: Pub/Sub
+    kind: messaging
+    tradeoff: Fans out realtime events between gateway nodes; messages are not durable.
+  workflow_engine:
+    label: Workflow Engine (sagas)
+    kind: service
+    tradeoff: Durable multi-step processes with retries and compensation; new programming model.
+  ml_model_serving:
+    label: ML Model Serving
+    kind: service
+    tradeoff: Low-latency inference behind an API; models need versioning and monitoring.
+  feature_store:
+    label: Feature Store
+    kind: datastore
+    requires_any: [ml_model_serving]
+    tradeoff: Same features for training and serving; another pipeline to keep fresh.
+
+  # --- caching and primary data ------------------------------------------
+  cache:
+    label: Redis Cache
+    kind: cache
+    requires_any: [postgres, sharded_sql, wide_column_store, document_store, key_value_store]
+    tradeoff: Cuts read latency and DB load; stale reads unless invalidated carefully.
+  postgres:
+    label: PostgreSQL
+    kind: datastore
+    group: primary_db
+    consistency: strong
+    replicated: false
+    tradeoff: Simple, strongly consistent, rich queries; single primary caps write throughput.
+  connection_pooler:
+    label: Connection Pooler (PgBouncer)
+    kind: service
+    requires_any: [postgres]
+    tradeoff: Lets many app instances share few DB connections; transaction-mode limits some features.
+  db_replicas:
+    label: Read Replicas + Standby
+    kind: datastore
+    requires_any: [postgres]
+    tradeoff: Scales reads and removes the primary as a single point of failure; replicas lag.
+  sharded_sql:
+    label: Distributed SQL (sharded)
+    kind: datastore
+    group: primary_db
+    consistency: strong
+    replicated: true
+    tradeoff: Strong consistency at large scale; higher write latency and operational cost.
+  wide_column_store:
+    label: Wide-Column Store (Cassandra)
+    kind: datastore
+    group: primary_db
+    consistency: eventual
+    replicated: true
+    tradeoff: Very high write throughput and horizontal scale; eventual consistency, query-first modeling.
+  document_store:
+    label: Document Store
+    kind: datastore
+    group: primary_db
+    consistency: eventual
+    replicated: true
+    tradeoff: Flexible schema; weaker multi-document transactions.
+  key_value_store:
+    label: Key-Value Store (DynamoDB-style)
+    kind: datastore
+    group: primary_db
+    consistency: tunable
+    replicated: true
+    tradeoff: Predictable single-digit ms at any scale; access patterns must be known up front.
+  ledger:
+    label: Double-Entry Ledger
+    kind: datastore
+    requires_any: [postgres, sharded_sql]
+    tradeoff: Immutable, balanced money movements; corrections are new entries, never edits.
+  graph_db:
+    label: Graph Database
+    kind: datastore
+    tradeoff: Fast multi-hop relationship queries; harder to shard than other stores.
+  time_series_db:
+    label: Time-Series Database
+    kind: datastore
+    tradeoff: Compressed, time-partitioned metrics with downsampling; poor at ad-hoc joins.
+  vector_db:
+    label: Vector Database
+    kind: datastore
+    tradeoff: Similarity search over embeddings; approximate results, re-index on model changes.
+  search_index:
+    label: Search Index
+    kind: datastore
+    tradeoff: Full-text and faceted search; index is eventually consistent with the source of truth.
+  geo_index:
+    label: Geospatial Index
+    kind: datastore
+  object_storage:
+    label: Object Storage
+    kind: storage
+    tradeoff: Cheap durable blob storage; serve it through the CDN.
+  backup_service:
+    label: Backups (point-in-time)
+    kind: ops
+    tradeoff: Recover from bad deploys and deletes; untested restores are not backups.
+  multi_region_replication:
+    label: Cross-Region Replication
+    kind: datastore
+    tradeoff: Survives a region loss; cross-region writes add latency or conflicts.
+
+  # --- async and data processing -----------------------------------------
+  message_queue:
+    label: Message Queue
+    kind: messaging
+    tradeoff: Decouples slow work from requests; at-least-once delivery needs idempotent consumers.
+  dead_letter_queue:
+    label: Dead-Letter Queue
+    kind: messaging
+    requires_any: [message_queue, event_stream]
+    tradeoff: Parks poison messages instead of retrying forever; someone must drain it.
+  worker_pool:
+    label: Worker Pool
+    kind: service
+    requires_any: [message_queue, scheduler, event_stream]
+  scheduler:
+    label: Job Scheduler
+    kind: service
+  media_pipeline:
+    label: Media Processing Pipeline
+    kind: service
+    requires_any: [object_storage]
+    tradeoff: Transcodes and thumbnails uploads asynchronously; compute-heavy and bursty.
+  event_stream:
+    label: Event Stream (Kafka)
+    kind: messaging
+    tradeoff: Durable, replayable event log; partitioning decisions are hard to change.
+  cdc_pipeline:
+    label: Change Data Capture
+    kind: messaging
+    requires_any: [postgres, sharded_sql, wide_column_store, document_store, key_value_store]
+    tradeoff: Streams DB changes to other systems without dual writes; schema changes need care.
+  stream_processor:
+    label: Stream Processor (Flink)
+    kind: service
+    requires_any: [event_stream]
+    tradeoff: Windowed aggregations in near real time; state and exactly-once add complexity.
+  batch_processing:
+    label: Batch Processing (Spark)
+    kind: service
+    requires_any: [object_storage, data_warehouse]
+    tradeoff: Cheap large-scale offline compute; results are hours old.
+  data_warehouse:
+    label: Data Warehouse
+    kind: storage
+    requires_any: [event_stream, cdc_pipeline]
+
+  # --- product services ---------------------------------------------------
+  notification_service:
+    label: Notification Service
+    kind: service
+  payment_gateway:
+    label: Payment Provider Adapter
+    kind: service
+    tradeoff: Keep calls idempotent and record every state change for reconciliation.
+  id_generator:
+    label: ID Generator (Snowflake)
+    kind: service
+    tradeoff: Unique, roughly time-ordered ids without a central sequence.
+
+  # --- operations ---------------------------------------------------------
+  feature_flags:
+    label: Feature Flags
+    kind: ops
+    tradeoff: Ship dark and roll out gradually; stale flags become tech debt.
+  monitoring:
+    label: Metrics, Logs & Tracing
+    kind: ops
+
+# A design must fill every slot with at least one of the listed components.
+required_slots:
+  entry: [load_balancer]
+  compute: [app_service]
+  primary_db: [postgres, sharded_sql, wide_column_store, document_store, key_value_store]
+
+# Configuration decisions. A setting is dropped if none of its components is in the design.
+settings:
+  cache_strategy:
+    applies_to: [cache]
+    values: [cache-aside, write-through, read-through]
+  cache_stampede_protection:
+    applies_to: [cache]
+    values: [request-coalescing, early-expiry, none]
+  shard_key:
+    applies_to: [sharded_sql, wide_column_store, document_store, key_value_store]
+    values: [user_id, tenant_id, conversation_id, entity_id, time_bucket, geo_cell, account_id]
+  replication_mode:
+    applies_to: [db_replicas, sharded_sql, wide_column_store, document_store, key_value_store]
+    values: [async, semi-sync, sync, quorum]
+  read_consistency:
+    applies_to: [postgres, sharded_sql, wide_column_store, document_store, key_value_store]
+    values: [linearizable, read-your-writes, eventual]
+  backup_strategy:
+    applies_to: [backup_service]
+    values: [daily-snapshot, point-in-time-recovery, continuous-cross-region]
+  failover:
+    applies_to: [db_replicas, sharded_sql, multi_region_replication]
+    values: [manual, automatic]
+  multi_region_mode:
+    applies_to: [multi_region_replication]
+    values: [active-passive, active-active]
+  queue_delivery:
+    applies_to: [message_queue, event_stream]
+    values: [at-least-once, at-most-once, effectively-once]
+  queue_ordering:
+    applies_to: [message_queue, event_stream]
+    values: [none, per-key, global]
+  realtime_transport:
+    applies_to: [websocket_gateway]
+    values: [websocket, server-sent-events, long-polling]
+  feed_fanout:
+    applies_to: [worker_pool]
+    values: [on-write, on-read, hybrid]
+  id_scheme:
+    applies_to: [id_generator]
+    values: [snowflake, ulid, uuid-v7]
+  tenancy_model:
+    applies_to: [app_service]
+    values: [shared-schema, schema-per-tenant, db-per-tenant]
+  encryption_at_rest:
+    applies_to: [kms]
+    values: [provider-managed, customer-managed-keys]
+  rate_limit_algorithm:
+    applies_to: [rate_limiter]
+    values: [token-bucket, sliding-window]
+  search_sync:
+    applies_to: [search_index]
+    values: [change-data-capture, async-indexer]
+  media_delivery:
+    applies_to: [cdn]
+    values: [signed-urls, public]
+  deploy_strategy:
+    applies_to: [app_service]
+    values: [rolling, blue-green, canary]
+  autoscaling:
+    applies_to: [app_service]
+    values: [cpu-based, queue-depth, scheduled]
+  idempotency:
+    applies_to: [app_service]
+    values: [idempotency-keys, natural-keys, none]
+
+# "first" links to the first present target only; "all" links to every present target.
+edges:
+  - {from: client, to: [cdn]}
+  - {from: client, to: [dns_geo, waf, load_balancer], mode: first}
+  - {from: dns_geo, to: [waf, load_balancer], mode: first}
+  - {from: waf, to: [load_balancer]}
+  - {from: cdn, to: [object_storage]}
+  - {from: load_balancer, to: [api_gateway, app_service], mode: first}
+  - {from: load_balancer, to: [websocket_gateway]}
+  - {from: api_gateway, to: [rate_limiter, app_service]}
+  - {from: websocket_gateway, to: [pubsub, presence_service, app_service]}
+  - {from: auth_service, to: [identity_provider]}
+  - from: app_service
+    to: [auth_service, cache, connection_pooler]
+  - {from: app_service, to: [postgres, sharded_sql, wide_column_store, document_store, key_value_store], mode: first}
+  - from: app_service
+    to: [ledger, graph_db, time_series_db, vector_db, object_storage, message_queue,
+         event_stream, search_index, geo_index, payment_gateway, id_generator, pubsub,
+         workflow_engine, ml_model_serving, tokenization_vault, audit_log]
+  - {from: connection_pooler, to: [postgres]}
+  - {from: postgres, to: [db_replicas, ledger]}
+  - {from: sharded_sql, to: [ledger]}
+  - {from: [postgres, sharded_sql, wide_column_store, document_store, key_value_store], to: [multi_region_replication, cdc_pipeline, backup_service]}
+  - {from: cdc_pipeline, to: [search_index, event_stream, data_warehouse], mode: first}
+  - {from: scheduler, to: [message_queue, batch_processing], mode: first}
+  - {from: message_queue, to: [worker_pool, dead_letter_queue]}
+  - {from: workflow_engine, to: [message_queue, payment_gateway]}
+  - {from: worker_pool, to: [notification_service, media_pipeline, search_index, cache]}
+  - {from: worker_pool, to: [postgres, sharded_sql, wide_column_store, document_store, key_value_store], mode: first}
+  - {from: media_pipeline, to: [object_storage]}
+  - {from: event_stream, to: [stream_processor, data_warehouse, worker_pool, dead_letter_queue]}
+  - {from: stream_processor, to: [time_series_db, cache, data_warehouse], mode: first}
+  - {from: data_warehouse, to: [batch_processing]}
+  - {from: batch_processing, to: [feature_store]}
+  - {from: ml_model_serving, to: [feature_store, vector_db]}
+  - {from: [app_service, worker_pool], to: [secrets_manager, kms], style: dotted}
+  - {from: app_service, to: [feature_flags, monitoring], style: dotted}
+  - {from: service_mesh, to: [app_service], style: dotted}

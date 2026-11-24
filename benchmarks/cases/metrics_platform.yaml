@@ -1,0 +1,19 @@
+title: Metrics and monitoring platform
+notes: Write-dominated time series from agents, streaming aggregation, alerting.
+requirements:
+  name: Metrics Platform
+  daily_active_users: 100_000
+  requests_per_user_per_day: 8640
+  read_write_ratio: 0.1
+  avg_write_kb: 0.2
+  latency_p99_ms: 1000
+  availability: 99.9
+  consistency: eventual
+  data_model: time_series
+  write_pattern: append_only
+  features: [analytics, notifications]
+expect:
+  must: [time_series_db, event_stream, stream_processor, notification_service]
+  must_not: [websocket_gateway, cdn, payment_gateway]
+  nice: [object_storage, data_warehouse, message_queue, worker_pool, cache, rate_limiter,
+         api_gateway, key_value_store, wide_column_store]

@@ -1,0 +1,43 @@
+{
+  "components": [
+    "client",
+    "waf",
+    "cdn",
+    "load_balancer",
+    "api_gateway",
+    "rate_limiter",
+    "auth_service",
+    "audit_log",
+    "app_service",
+    "workflow_engine",
+    "cache",
+    "postgres",
+    "db_replicas",
+    "ledger",
+    "search_index",
+    "backup_service",
+    "message_queue",
+    "dead_letter_queue",
+    "worker_pool",
+    "notification_service",
+    "payment_gateway",
+    "monitoring"
+  ],
+  "settings": {
+    "autoscaling": "cpu-based",
+    "backup_strategy": "daily-snapshot",
+    "cache_strategy": "cache-aside",
+    "deploy_strategy": "blue-green",
+    "failover": "automatic",
+    "idempotency": "idempotency-keys",
+    "media_delivery": "public",
+    "queue_delivery": "effectively-once",
+    "queue_ordering": "none",
+    "rate_limit_algorithm": "token-bucket",
+    "read_consistency": "linearizable",
+    "replication_mode": "async",
+    "search_sync": "async-indexer"
+  },
+  "confidence": "high",
+  "findings": []
+}

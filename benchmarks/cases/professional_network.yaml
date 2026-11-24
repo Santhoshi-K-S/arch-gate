@@ -1,0 +1,18 @@
+title: LinkedIn-style connections graph
+notes: Friend-of-friend queries need a graph store; profiles are searchable.
+requirements:
+  name: Professional Network
+  daily_active_users: 10_000_000
+  requests_per_user_per_day: 30
+  read_write_ratio: 20
+  avg_write_kb: 0.5
+  latency_p99_ms: 200
+  availability: 99.95
+  consistency: eventual
+  data_model: graph
+  features: [search, notifications]
+expect:
+  must: [graph_db, cache, search_index, notification_service]
+  must_not: [websocket_gateway, sharded_sql]
+  nice: [message_queue, worker_pool, key_value_store, wide_column_store, document_store,
+         postgres, db_replicas, cdc_pipeline, api_gateway, rate_limiter, cdn]

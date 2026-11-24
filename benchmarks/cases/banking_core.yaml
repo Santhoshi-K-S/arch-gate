@@ -1,0 +1,26 @@
+title: Core banking accounts
+notes: Accounts and transfers, strict correctness, regulator audit, no data loss.
+requirements:
+  name: Core Banking
+  daily_active_users: 2_000_000
+  requests_per_user_per_day: 15
+  read_write_ratio: 10
+  avg_write_kb: 1
+  latency_p99_ms: 500
+  availability: 99.99
+  consistency: strong
+  regions: 2
+  ordering: per_key
+  rpo_minutes: 0
+  rto_minutes: 30
+  compliance: [soc2, gdpr]
+  features: [payments, notifications, batch_jobs]
+expect:
+  must: [ledger, audit_log, kms, workflow_engine, backup_service, multi_region_replication,
+         scheduler, {any_of: [postgres, sharded_sql]}]
+  must_not: [wide_column_store, document_store, key_value_store]
+  nice: [payment_gateway, message_queue, dead_letter_queue, worker_pool, secrets_manager,
+         identity_provider, db_replicas, dns_geo, notification_service, waf, api_gateway,
+         rate_limiter, cache, tokenization_vault]
+  settings: {backup_strategy: continuous-cross-region, failover: automatic,
+             idempotency: idempotency-keys, read_consistency: linearizable}

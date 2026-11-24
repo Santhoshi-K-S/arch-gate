@@ -1,0 +1,55 @@
+version: 2
+
+rules:
+  - id: CO001
+    name: PCI DSS scope reduction
+    priority: 90
+    when: {field: compliance, op: contains, value: pci}
+    then:
+      add: [tokenization_vault, audit_log, kms, secrets_manager, waf]
+      set: {encryption_at_rest: customer-managed-keys}
+    why: Tokenize card data at the edge so most systems never touch it, and log every access.
+
+  - id: CO002
+    name: HIPAA safeguards
+    priority: 90
+    when: {field: compliance, op: contains, value: hipaa}
+    then:
+      add: [audit_log, kms, tokenization_vault, secrets_manager, waf, backup_service]
+      remove: [cdn]
+      set: {encryption_at_rest: customer-managed-keys}
+    why: PHI needs encryption with controlled keys, access audit, backups, and no third-party edge caching.
+
+  - id: CO003
+    name: GDPR accountability
+    priority: 90
+    when: {field: compliance, op: contains, value: gdpr}
+    then: {add: [audit_log, kms]}
+    why: You must show who accessed personal data and be able to crypto-shred it on request.
+
+  - id: CO004
+    name: SOC 2 controls
+    priority: 90
+    when: {field: compliance, op: contains, value: soc2}
+    then: {add: [audit_log, secrets_manager, kms]}
+    why: SOC 2 auditors look for access logging, secret handling and encryption at rest.
+
+  - id: CO005
+    name: Regulated tenants get their own schema
+    priority: 85
+    when:
+      all:
+        - {field: multi_tenant, op: "==", value: true}
+        - {field: compliance, op: contains, value: pci}
+    then: {set: {tenancy_model: schema-per-tenant}}
+    why: Stronger isolation makes per-tenant audits and data deletion tractable.
+
+  - id: CO006
+    name: Health data gets its own database per tenant
+    priority: 90
+    when:
+      all:
+        - {field: multi_tenant, op: "==", value: true}
+        - {field: compliance, op: contains, value: hipaa}
+    then: {set: {tenancy_model: db-per-tenant}}
+    why: Physical separation limits the blast radius of a breach and simplifies BAAs per customer.

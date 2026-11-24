@@ -1,0 +1,19 @@
+title: Patient portal (HIPAA)
+notes: PHI must be encrypted with managed keys, every access audited, documents stored safely.
+requirements:
+  name: Patient Portal
+  daily_active_users: 200_000
+  requests_per_user_per_day: 20
+  read_write_ratio: 5
+  avg_write_kb: 5
+  latency_p99_ms: 500
+  availability: 99.95
+  consistency: strong
+  compliance: [hipaa]
+  features: [notifications, file_upload]
+expect:
+  must: [audit_log, kms, tokenization_vault, secrets_manager, object_storage, postgres,
+         db_replicas, backup_service, waf]
+  must_not: [wide_column_store, document_store, cdn]
+  nice: [message_queue, worker_pool, notification_service, cache, identity_provider]
+  settings: {encryption_at_rest: customer-managed-keys}

@@ -1,0 +1,39 @@
+version: 2
+
+rules:
+  - id: CT001
+    name: Lean stack on a low budget
+    priority: 50
+    when:
+      all:
+        - {field: budget, op: "==", value: low}
+        - {field: peak_qps, op: "<", value: 200}
+    then: {remove: [api_gateway, rate_limiter, cdn, connection_pooler]}
+    why: At low traffic and a tight budget these add cost without a clear benefit.
+
+  - id: CT002
+    name: Skip cache at small scale on a low budget
+    priority: 50
+    when:
+      all:
+        - {field: budget, op: "==", value: low}
+        - {field: peak_read_qps, op: "<", value: 200}
+    then: {remove: [cache]}
+    why: The database alone handles this read rate; a cache would be extra cost and complexity.
+
+  - id: CT003
+    name: Small teams avoid heavy platform tooling
+    priority: 50
+    when: {field: team_size, op: "==", value: small}
+    then: {remove: [service_mesh, feature_flags]}
+    why: A mesh and flag platform cost more to run than they save a team of a few engineers.
+
+  - id: CT004
+    name: Small eventual workloads don't need distributed stores
+    priority: 50
+    when:
+      all:
+        - {field: daily_active_users, op: "<", value: 100000}
+        - {field: storage_tb, op: "<", value: 1}
+    then: {remove: [wide_column_store, document_store, sharded_sql]}
+    why: PostgreSQL handles this size comfortably; a distributed store adds operational load for nothing.

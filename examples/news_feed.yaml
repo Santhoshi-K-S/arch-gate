@@ -1,0 +1,12 @@
+name: News Feed
+description: Users follow each other and see a ranked feed of posts with images.
+daily_active_users: 20_000_000
+requests_per_user_per_day: 30
+read_write_ratio: 50
+avg_write_kb: 2
+latency_p99_ms: 150
+availability: 99.95
+consistency: eventual
+retention_years: 5
+regions: 2
+features: [feed, media, search, notifications]

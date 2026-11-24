@@ -1,0 +1,19 @@
+title: Google Docs-style collaborative editing
+notes: Realtime ops per document, strict ordering per document, presence cursors.
+requirements:
+  name: Collaborative Docs
+  daily_active_users: 5_000_000
+  requests_per_user_per_day: 200
+  read_write_ratio: 1
+  avg_write_kb: 0.5
+  latency_p99_ms: 100
+  availability: 99.95
+  consistency: strong
+  ordering: per_key
+  write_pattern: append_only
+  features: [realtime, collaboration]
+expect:
+  must: [websocket_gateway, pubsub, presence_service, cache, {any_of: [sharded_sql, postgres]}]
+  must_not: [wide_column_store, document_store]
+  nice: [object_storage, db_replicas, message_queue, id_generator]
+  settings: {realtime_transport: websocket}

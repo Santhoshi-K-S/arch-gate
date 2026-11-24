@@ -1,0 +1,19 @@
+title: Real-time game leaderboard
+notes: Constant score updates on a few hot boards; reads must be instant.
+requirements:
+  name: Leaderboard
+  daily_active_users: 5_000_000
+  requests_per_user_per_day: 50
+  read_write_ratio: 5
+  avg_write_kb: 0.2
+  latency_p99_ms: 50
+  availability: 99.9
+  consistency: eventual
+  hot_keys: true
+  write_pattern: update_heavy
+  features: [realtime]
+expect:
+  must: [cache, websocket_gateway, {any_of: [key_value_store, wide_column_store, postgres]}]
+  must_not: [sharded_sql, cdn]
+  nice: [pubsub, db_replicas, api_gateway, rate_limiter, message_queue, worker_pool]
+  settings: {cache_strategy: write-through}

@@ -1,0 +1,21 @@
+title: Uber-style ride matching
+notes: High-rate location updates, geo search, trip state machine, payments, two regions.
+requirements:
+  name: Ride Sharing
+  daily_active_users: 5_000_000
+  requests_per_user_per_day: 200
+  read_write_ratio: 1
+  avg_write_kb: 0.2
+  latency_p99_ms: 100
+  availability: 99.99
+  consistency: strong
+  regions: 2
+  write_pattern: update_heavy
+  features: [geo, realtime, payments, notifications]
+expect:
+  must: [geo_index, websocket_gateway, payment_gateway, notification_service, message_queue,
+         cache, workflow_engine, multi_region_replication, dns_geo,
+         {any_of: [sharded_sql, key_value_store]}]
+  must_not: [postgres]
+  nice: [ledger, pubsub, id_generator, api_gateway, rate_limiter, dead_letter_queue, event_stream]
+  settings: {idempotency: idempotency-keys}

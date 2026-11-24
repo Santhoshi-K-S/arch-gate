@@ -1,0 +1,21 @@
+title: Twitter-style home timeline
+notes: Read-heavy feed with celebrity hot keys; hybrid fan-out is the standard answer.
+requirements:
+  name: Social Feed
+  daily_active_users: 50_000_000
+  requests_per_user_per_day: 50
+  read_write_ratio: 100
+  avg_write_kb: 1
+  latency_p99_ms: 200
+  availability: 99.95
+  consistency: eventual
+  regions: 2
+  hot_keys: true
+  features: [feed, search, notifications, media]
+expect:
+  must: [cache, message_queue, worker_pool, search_index, object_storage, cdn,
+         notification_service, multi_region_replication, dns_geo,
+         {any_of: [wide_column_store, key_value_store]}]
+  must_not: [postgres]
+  nice: [media_pipeline, id_generator, api_gateway, rate_limiter, dead_letter_queue, cdc_pipeline]
+  settings: {feed_fanout: hybrid}

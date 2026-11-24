@@ -1,0 +1,18 @@
+title: Search autocomplete
+notes: Extremely read-heavy, tight latency; suggestions rebuilt offline from query logs.
+requirements:
+  name: Autocomplete
+  daily_active_users: 20_000_000
+  requests_per_user_per_day: 50
+  read_write_ratio: 1000
+  avg_write_kb: 0.1
+  latency_p99_ms: 50
+  availability: 99.95
+  consistency: eventual
+  hot_keys: true
+  features: [search, analytics]
+expect:
+  must: [cache, cdn, search_index, event_stream, {any_of: [batch_processing, stream_processor]}]
+  must_not: [websocket_gateway, sharded_sql, payment_gateway]
+  nice: [data_warehouse, api_gateway, rate_limiter, key_value_store, wide_column_store]
+  settings: {cache_strategy: cache-aside}

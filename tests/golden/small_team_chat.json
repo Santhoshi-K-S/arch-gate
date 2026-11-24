@@ -1,0 +1,26 @@
+{
+  "components": [
+    "client",
+    "load_balancer",
+    "auth_service",
+    "app_service",
+    "websocket_gateway",
+    "presence_service",
+    "pubsub",
+    "postgres",
+    "db_replicas",
+    "backup_service",
+    "monitoring"
+  ],
+  "settings": {
+    "autoscaling": "cpu-based",
+    "backup_strategy": "daily-snapshot",
+    "deploy_strategy": "rolling",
+    "failover": "automatic",
+    "read_consistency": "eventual",
+    "realtime_transport": "websocket",
+    "replication_mode": "async"
+  },
+  "confidence": "high",
+  "findings": []
+}

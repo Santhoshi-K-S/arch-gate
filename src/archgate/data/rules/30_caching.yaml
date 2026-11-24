@@ -1,0 +1,40 @@
+version: 2
+
+rules:
+  - id: CA001
+    name: Cache for read-dominated traffic
+    priority: 40
+    when:
+      all:
+        - {field: read_write_ratio, op: ">=", value: 10}
+        - {field: peak_read_qps, op: ">=", value: 500}
+    then: {add: [cache]}
+    why: Reads dominate, so caching cuts database load and latency.
+
+  - id: CA002
+    name: Cache for tight latency targets
+    priority: 40
+    when:
+      all:
+        - {field: latency_p99_ms, op: "<=", value: 100}
+        - {field: peak_read_qps, op: ">=", value: 500}
+    then: {add: [cache]}
+    why: A p99 this low is hard to hit from disk-backed storage at this read rate.
+
+  - id: CA003
+    name: Hot keys need a cache and stampede protection
+    priority: 60
+    when: {field: hot_keys, op: "==", value: true}
+    then: {add: [cache], set: {cache_stampede_protection: request-coalescing}}
+    why: A few keys take most traffic; serve them from memory and let one request refill on expiry.
+
+  - id: CA004
+    name: Write-through for hot, constantly updated values
+    priority: 40
+    when:
+      all:
+        - {field: write_pattern, op: "==", value: update_heavy}
+        - {field: hot_keys, op: "==", value: true}
+        - {field: latency_p99_ms, op: "<=", value: 100}
+    then: {set: {cache_strategy: write-through}}
+    why: Readers must see the latest value instantly; updating the cache on write avoids misses.

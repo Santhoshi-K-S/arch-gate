@@ -1,0 +1,21 @@
+title: Mid-size online store
+notes: Catalog search, card payments under PCI, recommendations.
+requirements:
+  name: Online Store
+  daily_active_users: 500_000
+  requests_per_user_per_day: 40
+  read_write_ratio: 20
+  avg_write_kb: 4
+  latency_p99_ms: 200
+  availability: 99.95
+  consistency: strong
+  retention_years: 7
+  compliance: [pci]
+  features: [search, payments, notifications, recommendations]
+expect:
+  must: [search_index, payment_gateway, cache, cdn, postgres, db_replicas, message_queue,
+         tokenization_vault, ml_model_serving]
+  must_not: [wide_column_store, document_store]
+  nice: [workflow_engine, notification_service, api_gateway, rate_limiter, waf, audit_log, kms,
+         secrets_manager, event_stream, data_warehouse, feature_store, cdc_pipeline,
+         batch_processing, worker_pool, dead_letter_queue, ledger]

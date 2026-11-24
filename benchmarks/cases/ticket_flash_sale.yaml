@@ -1,0 +1,20 @@
+title: Concert ticketing with flash sales
+notes: Massive spikes on a few hot events; queue buyers, protect inventory, block bots.
+requirements:
+  name: Ticketing
+  daily_active_users: 2_000_000
+  requests_per_user_per_day: 20
+  read_write_ratio: 20
+  avg_write_kb: 1
+  latency_p99_ms: 500
+  availability: 99.95
+  consistency: strong
+  traffic_pattern: spiky
+  hot_keys: true
+  features: [payments, notifications]
+expect:
+  must: [message_queue, cache, rate_limiter, payment_gateway, waf,
+         {any_of: [postgres, sharded_sql]}]
+  must_not: [wide_column_store, document_store]
+  nice: [workflow_engine, notification_service, api_gateway, worker_pool, db_replicas, ledger]
+  settings: {idempotency: idempotency-keys, autoscaling: queue-depth}

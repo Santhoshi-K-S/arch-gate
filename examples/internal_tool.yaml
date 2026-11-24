@@ -1,0 +1,11 @@
+name: Internal Admin Tool
+description: Small CRUD app for the operations team.
+daily_active_users: 200
+requests_per_user_per_day: 100
+read_write_ratio: 3
+avg_write_kb: 2
+latency_p99_ms: 500
+availability: 99.5
+consistency: strong
+budget: low
+features: []

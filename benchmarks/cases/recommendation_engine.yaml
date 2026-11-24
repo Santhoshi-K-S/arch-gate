@@ -1,0 +1,17 @@
+title: Product recommendations service
+notes: Offline training from event logs, online feature store and low-latency serving.
+requirements:
+  name: Recommendations
+  daily_active_users: 10_000_000
+  requests_per_user_per_day: 20
+  read_write_ratio: 50
+  avg_write_kb: 1
+  latency_p99_ms: 100
+  availability: 99.9
+  consistency: eventual
+  features: [recommendations, analytics]
+expect:
+  must: [ml_model_serving, feature_store, event_stream, data_warehouse, batch_processing, cache]
+  must_not: [websocket_gateway, payment_gateway]
+  nice: [object_storage, stream_processor, key_value_store, wide_column_store, postgres,
+         db_replicas, api_gateway, rate_limiter, cdn, vector_db]

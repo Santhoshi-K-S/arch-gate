@@ -1,0 +1,17 @@
+title: Small internal admin tool
+notes: The right answer is boring. Anything distributed is over-engineering.
+requirements:
+  name: Internal Admin
+  daily_active_users: 200
+  requests_per_user_per_day: 100
+  read_write_ratio: 3
+  avg_write_kb: 2
+  latency_p99_ms: 500
+  availability: 99.5
+  consistency: strong
+  budget: low
+  team_size: small
+expect:
+  must: [postgres]
+  must_not: [cache, api_gateway, sharded_sql, service_mesh, multi_region_replication,
+             wide_column_store, event_stream, cdn, message_queue, db_replicas]

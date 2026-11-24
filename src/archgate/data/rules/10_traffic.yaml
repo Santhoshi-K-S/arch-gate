@@ -1,0 +1,78 @@
+version: 2
+
+rules:
+  - id: TR001
+    name: Gateway for high traffic
+    priority: 40
+    when: {field: peak_qps, op: ">=", value: 1000}
+    then: {add: [api_gateway, rate_limiter]}
+    why: At this request rate you want central routing and throttling in front of the app.
+
+  - id: TR002
+    name: Public API quotas
+    priority: 40
+    covers: [public_api]
+    when: {field: features, op: contains, value: public_api}
+    then: {add: [api_gateway, rate_limiter], set: {rate_limit_algorithm: token-bucket}}
+    why: Third-party clients need keys and per-client quotas; token buckets allow short bursts.
+
+  - id: TR003
+    name: CDN for read-heavy consumer apps
+    priority: 40
+    when:
+      all:
+        - {field: read_write_ratio, op: ">=", value: 10}
+        - {field: daily_active_users, op: ">=", value: 100000}
+    then: {add: [cdn]}
+    why: Many users reading the same content benefit from edge caching.
+
+  - id: TR004
+    name: Absorb spiky traffic with a queue
+    priority: 40
+    when: {field: traffic_pattern, op: "==", value: spiky}
+    then: {add: [message_queue, worker_pool], set: {autoscaling: queue-depth}}
+    why: Spikes arrive faster than instances boot; queue the work and scale on backlog, not CPU.
+
+  - id: TR005
+    name: Scheduled scaling for seasonal peaks
+    priority: 40
+    when: {field: traffic_pattern, op: "==", value: seasonal}
+    then: {set: {autoscaling: scheduled}}
+    why: Known peaks (sales, holidays) are cheaper to pre-scale for than to chase reactively.
+
+  - id: TR006
+    name: Edge protection for high-value consumer flows
+    priority: 40
+    when:
+      all:
+        - {field: daily_active_users, op: ">=", value: 1000000}
+        - {field: features, op: contains, value: payments}
+    then: {add: [waf]}
+    why: Popular checkout flows attract bots, card testing and credential stuffing.
+
+  - id: TR007
+    name: Connection pooling at scale
+    priority: 30
+    when: {field: peak_qps, op: ">=", value: 2000}
+    then: {add: [connection_pooler]}
+    why: Many app instances exhaust PostgreSQL connections long before CPU; pool them.
+
+  - id: TR008
+    name: Service mesh for large teams at scale
+    priority: 30
+    when:
+      all:
+        - {field: team_size, op: "==", value: large}
+        - {field: peak_qps, op: ">=", value: 10000}
+    then: {add: [service_mesh]}
+    why: Many services owned by many teams need uniform mTLS, retries and traffic shifting.
+
+  - id: TR009
+    name: Flash-sale protection
+    priority: 60
+    when:
+      all:
+        - {field: traffic_pattern, op: "==", value: spiky}
+        - {field: hot_keys, op: "==", value: true}
+    then: {add: [waf, api_gateway, rate_limiter, message_queue, cache]}
+    why: Everyone hits the same item at once; queue buyers fairly and keep bots out.

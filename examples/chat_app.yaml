@@ -1,0 +1,11 @@
+name: Chat App
+description: One-to-one and group messaging with delivery receipts and push notifications.
+daily_active_users: 5_000_000
+requests_per_user_per_day: 60
+read_write_ratio: 2
+avg_write_kb: 1
+latency_p99_ms: 200
+availability: 99.9
+consistency: eventual
+retention_years: 3
+features: [chat, notifications, media]

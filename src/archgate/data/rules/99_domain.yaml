@@ -1,0 +1,53 @@
+version: 2
+
+rules:
+  - id: DM001
+    name: Payments
+    priority: 80
+    covers: [payments]
+    when: {field: features, op: contains, value: payments}
+    then:
+      add: [payment_gateway, api_gateway, message_queue, worker_pool, workflow_engine]
+      set: {queue_delivery: effectively-once}
+    why: An order/payment/fulfilment saga needs durable steps, compensation and idempotent providers.
+
+  - id: DM002
+    name: Feed fan-out
+    priority: 40
+    covers: [feed]
+    when: {field: features, op: contains, value: feed}
+    then: {add: [cache, message_queue, worker_pool], set: {feed_fanout: on-write}}
+    why: Precompute timelines on write and serve them from cache on read.
+
+  - id: DM003
+    name: Hybrid fan-out for big or celebrity-heavy feeds
+    priority: 60
+    when:
+      all:
+        - {field: features, op: contains, value: feed}
+        - any:
+            - {field: hot_keys, op: "==", value: true}
+            - {field: daily_active_users, op: ">=", value: 10000000}
+    then: {set: {feed_fanout: hybrid}}
+    why: Pushing a celebrity's post to millions of timelines is too slow; pull those on read instead.
+
+  - id: DM004
+    name: File and media storage
+    priority: 40
+    covers: [media, file_upload]
+    when:
+      any:
+        - {field: features, op: contains, value: media}
+        - {field: features, op: contains, value: file_upload}
+    then: {add: [object_storage, cdn]}
+    why: Blobs belong in object storage served through a CDN, not in the database.
+
+  - id: DM005
+    name: Protect large media from hotlinking
+    priority: 40
+    when:
+      all:
+        - {field: features, op: contains, value: media}
+        - {field: avg_write_kb, op: ">=", value: 10000}
+    then: {set: {media_delivery: signed-urls}}
+    why: Video bandwidth is the biggest bill; signed, expiring URLs stop others serving it for free.

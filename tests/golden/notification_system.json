@@ -1,0 +1,34 @@
+{
+  "components": [
+    "client",
+    "load_balancer",
+    "api_gateway",
+    "rate_limiter",
+    "auth_service",
+    "app_service",
+    "wide_column_store",
+    "backup_service",
+    "message_queue",
+    "dead_letter_queue",
+    "worker_pool",
+    "scheduler",
+    "notification_service",
+    "id_generator",
+    "monitoring"
+  ],
+  "settings": {
+    "autoscaling": "queue-depth",
+    "backup_strategy": "daily-snapshot",
+    "deploy_strategy": "rolling",
+    "id_scheme": "snowflake",
+    "idempotency": "idempotency-keys",
+    "queue_delivery": "at-least-once",
+    "queue_ordering": "none",
+    "rate_limit_algorithm": "token-bucket",
+    "read_consistency": "eventual",
+    "replication_mode": "async",
+    "shard_key": "entity_id"
+  },
+  "confidence": "high",
+  "findings": []
+}

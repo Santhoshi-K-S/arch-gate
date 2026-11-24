@@ -1,0 +1,16 @@
+title: Dropbox-style file sync
+notes: Blobs in object storage, strongly consistent metadata, change notifications to devices.
+requirements:
+  name: File Sync
+  daily_active_users: 10_000_000
+  requests_per_user_per_day: 50
+  read_write_ratio: 3
+  avg_write_kb: 1000
+  latency_p99_ms: 300
+  availability: 99.95
+  consistency: strong
+  features: [file_upload, notifications, realtime]
+expect:
+  must: [object_storage, sharded_sql, message_queue, notification_service, websocket_gateway]
+  must_not: [wide_column_store, document_store]
+  nice: [cdn, worker_pool, cache, dead_letter_queue, pubsub]

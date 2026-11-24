@@ -1,0 +1,40 @@
+{
+  "components": [
+    "client",
+    "cdn",
+    "load_balancer",
+    "api_gateway",
+    "rate_limiter",
+    "auth_service",
+    "app_service",
+    "websocket_gateway",
+    "pubsub",
+    "sharded_sql",
+    "object_storage",
+    "backup_service",
+    "message_queue",
+    "dead_letter_queue",
+    "worker_pool",
+    "notification_service",
+    "id_generator",
+    "monitoring"
+  ],
+  "settings": {
+    "autoscaling": "cpu-based",
+    "backup_strategy": "daily-snapshot",
+    "deploy_strategy": "blue-green",
+    "failover": "automatic",
+    "id_scheme": "snowflake",
+    "idempotency": "idempotency-keys",
+    "media_delivery": "public",
+    "queue_delivery": "at-least-once",
+    "queue_ordering": "none",
+    "rate_limit_algorithm": "token-bucket",
+    "read_consistency": "read-your-writes",
+    "realtime_transport": "websocket",
+    "replication_mode": "async",
+    "shard_key": "entity_id"
+  },
+  "confidence": "high",
+  "findings": []
+}

@@ -1,0 +1,19 @@
+title: Notification delivery system
+notes: Fan-out of push/email/SMS with retries, dedupe, scheduling and per-user throttling.
+requirements:
+  name: Notifications
+  daily_active_users: 50_000_000
+  requests_per_user_per_day: 5
+  read_write_ratio: 1
+  avg_write_kb: 1
+  latency_p99_ms: 1000
+  availability: 99.9
+  consistency: eventual
+  traffic_pattern: spiky
+  features: [notifications, batch_jobs]
+expect:
+  must: [message_queue, worker_pool, notification_service, dead_letter_queue, scheduler,
+         {any_of: [wide_column_store, key_value_store, postgres]}]
+  must_not: [websocket_gateway, cdn, sharded_sql]
+  nice: [rate_limiter, api_gateway, cache, db_replicas]
+  settings: {queue_delivery: at-least-once, idempotency: idempotency-keys}

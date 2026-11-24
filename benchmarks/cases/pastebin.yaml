@@ -1,0 +1,16 @@
+title: Pastebin
+notes: Text blobs belong in object storage; metadata in a simple store.
+requirements:
+  name: Pastebin
+  daily_active_users: 1_000_000
+  requests_per_user_per_day: 5
+  read_write_ratio: 10
+  avg_write_kb: 10
+  latency_p99_ms: 200
+  availability: 99.9
+  consistency: eventual
+  features: [file_upload]
+expect:
+  must: [object_storage, cdn, {any_of: [postgres, key_value_store, document_store]}]
+  must_not: [websocket_gateway, sharded_sql, multi_region_replication]
+  nice: [cache, db_replicas, id_generator]

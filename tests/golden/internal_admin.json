@@ -1,0 +1,19 @@
+{
+  "components": [
+    "client",
+    "load_balancer",
+    "auth_service",
+    "app_service",
+    "postgres",
+    "backup_service",
+    "monitoring"
+  ],
+  "settings": {
+    "autoscaling": "cpu-based",
+    "backup_strategy": "daily-snapshot",
+    "deploy_strategy": "rolling",
+    "read_consistency": "read-your-writes"
+  },
+  "confidence": "high",
+  "findings": []
+}

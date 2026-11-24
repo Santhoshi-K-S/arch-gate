@@ -1,0 +1,37 @@
+{
+  "components": [
+    "client",
+    "cdn",
+    "load_balancer",
+    "api_gateway",
+    "rate_limiter",
+    "auth_service",
+    "app_service",
+    "ml_model_serving",
+    "feature_store",
+    "cache",
+    "postgres",
+    "connection_pooler",
+    "db_replicas",
+    "backup_service",
+    "event_stream",
+    "batch_processing",
+    "data_warehouse",
+    "monitoring"
+  ],
+  "settings": {
+    "autoscaling": "cpu-based",
+    "backup_strategy": "daily-snapshot",
+    "cache_strategy": "cache-aside",
+    "deploy_strategy": "rolling",
+    "failover": "automatic",
+    "media_delivery": "public",
+    "queue_delivery": "at-least-once",
+    "queue_ordering": "none",
+    "rate_limit_algorithm": "token-bucket",
+    "read_consistency": "eventual",
+    "replication_mode": "async"
+  },
+  "confidence": "high",
+  "findings": []
+}

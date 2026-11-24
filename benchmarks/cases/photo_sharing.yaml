@@ -1,0 +1,17 @@
+title: Instagram-style photo sharing
+notes: Petabytes of images through a CDN, async processing, feed from cache.
+requirements:
+  name: Photo Sharing
+  daily_active_users: 20_000_000
+  requests_per_user_per_day: 30
+  read_write_ratio: 50
+  avg_write_kb: 500
+  latency_p99_ms: 200
+  availability: 99.95
+  consistency: eventual
+  features: [feed, media, notifications, search]
+expect:
+  must: [object_storage, cdn, media_pipeline, cache, message_queue, worker_pool, search_index,
+         {any_of: [wide_column_store, key_value_store, document_store]}]
+  must_not: [postgres, websocket_gateway]
+  nice: [notification_service, id_generator, api_gateway, rate_limiter, dead_letter_queue]

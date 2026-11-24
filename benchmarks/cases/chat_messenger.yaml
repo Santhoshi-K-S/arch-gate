@@ -1,0 +1,21 @@
+title: Global 1:1 and group messenger
+notes: WhatsApp-style. Ordered per conversation, append-heavy history, presence, push.
+requirements:
+  name: Messenger
+  daily_active_users: 50_000_000
+  requests_per_user_per_day: 100
+  read_write_ratio: 1
+  avg_write_kb: 1
+  latency_p99_ms: 100
+  availability: 99.99
+  consistency: eventual
+  regions: 2
+  ordering: per_key
+  write_pattern: append_only
+  features: [chat, notifications, media]
+expect:
+  must: [websocket_gateway, pubsub, presence_service, wide_column_store, message_queue,
+         notification_service, object_storage, id_generator, multi_region_replication]
+  must_not: [postgres, sharded_sql]
+  nice: [cdn, dns_geo, worker_pool, media_pipeline, dead_letter_queue, cache]
+  settings: {realtime_transport: websocket, shard_key: conversation_id, queue_ordering: per-key}

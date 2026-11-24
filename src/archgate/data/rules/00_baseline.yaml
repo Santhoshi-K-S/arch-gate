@@ -1,0 +1,68 @@
+# Priority bands (higher wins when rules disagree):
+#   90 compliance   80 correctness   70 reliability   60 scale
+#   50 cost trims   40 features      30 optimizations 10-20 defaults
+version: 2
+
+rules:
+  - id: BA001
+    name: Baseline web stack
+    priority: 10
+    when: {all: []}
+    then: {add: [client, load_balancer, app_service, auth_service, monitoring]}
+    why: Every service needs an entry point, stateless compute, auth and observability.
+
+  - id: BA002
+    name: Default relational store
+    priority: 10
+    when: {all: []}
+    then: {add: [postgres]}
+    why: A single relational database is the simplest correct default until scale says otherwise.
+
+  - id: BA003
+    name: Backups for every system of record
+    priority: 10
+    when: {all: []}
+    then: {add: [backup_service], set: {backup_strategy: daily-snapshot}}
+    why: Bad deploys and accidental deletes happen; replicas copy them, backups don't.
+
+  - id: BA004
+    name: Default deploy and scaling
+    priority: 10
+    when: {all: []}
+    then: {set: {deploy_strategy: rolling, autoscaling: cpu-based}}
+    why: Rolling deploys and CPU-based autoscaling are the low-effort defaults.
+
+  - id: BA005
+    name: Default component settings
+    priority: 20
+    when: {all: []}
+    then:
+      set:
+        cache_strategy: cache-aside
+        queue_delivery: at-least-once
+        queue_ordering: none
+        id_scheme: snowflake
+        rate_limit_algorithm: token-bucket
+        realtime_transport: websocket
+        search_sync: async-indexer
+        replication_mode: async
+        failover: automatic
+        multi_region_mode: active-passive
+        media_delivery: public
+        encryption_at_rest: provider-managed
+        shard_key: entity_id
+    why: Common, well-understood defaults; more specific rules override them.
+
+  - id: BA006
+    name: Read consistency follows the requirement (strong)
+    priority: 20
+    when: {field: consistency, op: "==", value: strong}
+    then: {set: {read_consistency: read-your-writes}}
+    why: Users must see their own writes; full linearizability is reserved for money and inventory.
+
+  - id: BA007
+    name: Read consistency follows the requirement (eventual)
+    priority: 20
+    when: {field: consistency, op: "==", value: eventual}
+    then: {set: {read_consistency: eventual}}
+    why: Eventual reads are cheaper and scale further when the product tolerates them.

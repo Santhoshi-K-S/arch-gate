@@ -1,0 +1,142 @@
+version: 2
+
+rules:
+  - id: DS001
+    name: Sharded SQL for large strongly-consistent data
+    priority: 60
+    when:
+      all:
+        - {field: consistency, op: "==", value: strong}
+        - any:
+            - {field: storage_tb, op: ">", value: 10}
+            - {field: peak_write_qps, op: ">", value: 5000}
+    then: {add: [sharded_sql]}
+    why: Strong consistency beyond one primary's storage or write limit needs distributed SQL.
+
+  - id: DS002
+    name: Wide-column store for heavy eventual writes
+    priority: 55
+    when:
+      all:
+        - {field: consistency, op: "==", value: eventual}
+        - any:
+            - {field: peak_write_qps, op: ">", value: 5000}
+            - {field: storage_tb, op: ">", value: 50}
+    then: {add: [wide_column_store]}
+    why: Eventual consistency lets you trade transactions for near-linear write and storage scale.
+
+  - id: DS003
+    name: Wide-column store for append-only history
+    priority: 56
+    when:
+      all:
+        - {field: consistency, op: "==", value: eventual}
+        - {field: write_pattern, op: "==", value: append_only}
+        - {field: storage_tb, op: ">", value: 5}
+    then: {add: [wide_column_store], set: {shard_key: time_bucket}}
+    why: Append-only data partitioned by time writes sequentially and ages out cheaply.
+
+  - id: DS004
+    name: Key-value store for lookup-shaped data
+    priority: 62
+    when: {field: data_model, op: "==", value: key_value}
+    then: {add: [key_value_store]}
+    why: When every access is by key, a key-value store gives predictable latency at any scale.
+
+  - id: DS005
+    name: Document store for flexible eventual data
+    priority: 58
+    when:
+      all:
+        - {field: data_model, op: "==", value: document}
+        - {field: consistency, op: "==", value: eventual}
+    then: {add: [document_store]}
+    why: Nested, evolving records fit documents; eventual consistency avoids cross-document transactions.
+
+  - id: DS006
+    name: Graph store for relationship queries
+    priority: 40
+    when: {field: data_model, op: "==", value: graph}
+    then: {add: [graph_db]}
+    why: Multi-hop queries like friends-of-friends are joins-of-joins in SQL and fast in a graph store.
+
+  - id: DS007
+    name: Time-series storage
+    priority: 40
+    when: {field: data_model, op: "==", value: time_series}
+    then: {add: [time_series_db, event_stream]}
+    why: Metrics need time-partitioned, compressed storage and a buffer in front of ingestion.
+
+  - id: DS008
+    name: Replicas for read-heavy relational load
+    priority: 40
+    when:
+      all:
+        - {field: read_write_ratio, op: ">=", value: 5}
+        - {field: peak_read_qps, op: ">=", value: 500}
+    then: {add: [db_replicas]}
+    why: Read replicas absorb read traffic so the primary can focus on writes.
+
+  - id: DS009
+    name: Distributed IDs at high write rates
+    priority: 30
+    when: {field: peak_write_qps, op: ">=", value: 1000}
+    then: {add: [id_generator]}
+    why: A central sequence becomes a bottleneck; generate ids without coordination.
+
+  - id: DS010
+    name: Blobs outside the database
+    priority: 60
+    when: {field: avg_write_kb, op: ">=", value: 100}
+    then: {add: [object_storage]}
+    why: Large payloads bloat databases and backups; keep them in object storage and store references.
+
+  - id: DS011
+    name: Money needs a ledger
+    priority: 80
+    when:
+      all:
+        - {field: features, op: contains, value: payments}
+        - {field: consistency, op: "==", value: strong}
+    then: {add: [ledger], set: {read_consistency: linearizable, shard_key: account_id}}
+    why: Balances must come from immutable, balanced entries; never update a balance in place.
+
+  - id: DS012
+    name: Inventory must not oversell
+    priority: 80
+    when:
+      all:
+        - {field: write_pattern, op: "==", value: update_heavy}
+        - {field: consistency, op: "==", value: strong}
+    then: {set: {read_consistency: linearizable}}
+    why: Concurrent updates to the same stock or seat need linearizable reads and conditional writes.
+
+  - id: DS013
+    name: Shard by tenant
+    priority: 60
+    when: {field: multi_tenant, op: "==", value: true}
+    then: {set: {shard_key: tenant_id}}
+    why: Keeps each tenant's data together and lets you move a noisy tenant to its own shard.
+
+  - id: DS014
+    name: Shard by location
+    priority: 40
+    when: {field: features, op: contains, value: geo}
+    then: {set: {shard_key: geo_cell}}
+    why: Most queries are local, so partitioning by geo cell keeps them on one shard.
+
+  - id: DS015
+    name: Shard chat by conversation
+    priority: 60
+    when: {field: features, op: contains, value: chat}
+    then: {set: {shard_key: conversation_id}}
+    why: Messages are read per conversation, so one conversation should live on one partition
+      (time-bucket within it if conversations get huge).
+
+  - id: DS016
+    name: Short links need collision-free codes
+    priority: 40
+    covers: [short_links]
+    when: {field: features, op: contains, value: short_links}
+    then: {add: [id_generator, cache], set: {id_scheme: snowflake}}
+    why: Encoding a unique numeric id in base62 avoids hash collisions and coordination.

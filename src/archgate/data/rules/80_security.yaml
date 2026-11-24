@@ -1,0 +1,36 @@
+version: 2
+
+rules:
+  - id: SE001
+    name: Secrets management for regulated or multi-tenant systems
+    priority: 90
+    when:
+      any:
+        - {field: compliance, op: "!=", value: []}
+        - {field: multi_tenant, op: "==", value: true}
+    then: {add: [secrets_manager, kms]}
+    why: Auditors and tenants expect no shared credentials in config and managed, rotated keys.
+
+  - id: SE002
+    name: SSO for business customers
+    priority: 40
+    when: {field: multi_tenant, op: "==", value: true}
+    then: {add: [identity_provider], set: {tenancy_model: shared-schema}}
+    why: B2B tenants expect SSO; a shared schema with tenant ids is the cheapest isolation that works.
+
+  - id: SE003
+    name: Protect tenants from each other
+    priority: 40
+    when:
+      all:
+        - {field: multi_tenant, op: "==", value: true}
+        - {field: peak_qps, op: ">=", value: 100}
+    then: {add: [api_gateway, rate_limiter]}
+    why: Per-tenant quotas stop one noisy customer degrading everyone else.
+
+  - id: SE004
+    name: Audit money movement
+    priority: 80
+    when: {field: features, op: contains, value: payments}
+    then: {add: [audit_log], set: {idempotency: idempotency-keys}}
+    why: Every payment needs a who/what/when record, and retries must never charge twice.

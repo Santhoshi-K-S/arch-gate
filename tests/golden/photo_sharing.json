@@ -1,0 +1,41 @@
+{
+  "components": [
+    "client",
+    "cdn",
+    "load_balancer",
+    "api_gateway",
+    "rate_limiter",
+    "auth_service",
+    "app_service",
+    "cache",
+    "wide_column_store",
+    "search_index",
+    "object_storage",
+    "backup_service",
+    "message_queue",
+    "dead_letter_queue",
+    "worker_pool",
+    "media_pipeline",
+    "cdc_pipeline",
+    "notification_service",
+    "monitoring"
+  ],
+  "settings": {
+    "autoscaling": "cpu-based",
+    "backup_strategy": "daily-snapshot",
+    "cache_strategy": "cache-aside",
+    "deploy_strategy": "blue-green",
+    "feed_fanout": "hybrid",
+    "idempotency": "idempotency-keys",
+    "media_delivery": "public",
+    "queue_delivery": "at-least-once",
+    "queue_ordering": "none",
+    "rate_limit_algorithm": "token-bucket",
+    "read_consistency": "eventual",
+    "replication_mode": "quorum",
+    "search_sync": "change-data-capture",
+    "shard_key": "entity_id"
+  },
+  "confidence": "high",
+  "findings": []
+}

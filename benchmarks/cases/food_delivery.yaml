@@ -1,0 +1,18 @@
+title: Food delivery marketplace
+notes: Restaurant search, order workflow across restaurant/courier/payment, live tracking.
+requirements:
+  name: Food Delivery
+  daily_active_users: 2_000_000
+  requests_per_user_per_day: 30
+  read_write_ratio: 10
+  avg_write_kb: 2
+  latency_p99_ms: 200
+  availability: 99.95
+  consistency: strong
+  features: [geo, payments, notifications, search, realtime]
+expect:
+  must: [geo_index, payment_gateway, notification_service, search_index, websocket_gateway,
+         message_queue, workflow_engine, cache, {any_of: [postgres, sharded_sql]}]
+  must_not: [wide_column_store, document_store]
+  nice: [db_replicas, api_gateway, rate_limiter, pubsub, ledger, dead_letter_queue, cdc_pipeline]
+  settings: {idempotency: idempotency-keys}

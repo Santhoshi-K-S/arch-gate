@@ -1,0 +1,63 @@
+version: 2
+
+rules:
+  - id: RT001
+    name: Realtime connections
+    priority: 40
+    covers: [realtime, chat]
+    when:
+      any:
+        - {field: features, op: contains, value: realtime}
+        - {field: features, op: contains, value: chat}
+    then: {add: [websocket_gateway, pubsub], set: {realtime_transport: websocket}}
+    why: Push-based updates need persistent connections and fan-out between gateway nodes.
+
+  - id: RT002
+    name: Server-sent events for one-way updates
+    priority: 45
+    when:
+      all:
+        - {field: features, op: contains, value: realtime}
+        - {field: read_write_ratio, op: ">=", value: 20}
+        - not: {field: features, op: contains, value: chat}
+        - not: {field: features, op: contains, value: collaboration}
+    then: {set: {realtime_transport: server-sent-events}}
+    why: When clients only listen, SSE is simpler than WebSockets and works through more proxies.
+
+  - id: RT003
+    name: Presence for chat
+    priority: 40
+    when: {field: features, op: contains, value: chat}
+    then: {add: [presence_service]}
+    why: Chat users expect online status and typing indicators.
+
+  - id: RT004
+    name: Chat history at scale
+    priority: 55
+    when:
+      all:
+        - {field: features, op: contains, value: chat}
+        - {field: consistency, op: "==", value: eventual}
+        - {field: daily_active_users, op: ">=", value: 1000000}
+    then: {add: [wide_column_store, id_generator]}
+    why: Message history is append-heavy and read by conversation, a natural wide-column fit.
+
+  - id: RT005
+    name: Collaborative editing
+    priority: 40
+    covers: [collaboration]
+    when: {field: features, op: contains, value: collaboration}
+    then:
+      add: [websocket_gateway, pubsub, presence_service, cache]
+      set: {realtime_transport: websocket}
+    why: Co-editing needs low-latency two-way sync, cursors/presence and the hot document in memory.
+
+  - id: RT006
+    name: Live location tracking
+    priority: 40
+    when:
+      all:
+        - {field: features, op: contains, value: geo}
+        - {field: features, op: contains, value: realtime}
+    then: {add: [cache, websocket_gateway, pubsub]}
+    why: Positions change every few seconds; keep the latest in memory and push updates to watchers.

@@ -1,0 +1,96 @@
+version: 2
+
+rules:
+  - id: RE001
+    name: Standby for high availability
+    priority: 70
+    when: {field: availability, op: ">=", value: 99.9}
+    then: {add: [db_replicas]}
+    why: Three nines or more cannot depend on a single database instance.
+
+  - id: RE002
+    name: Multi-region deployment
+    priority: 70
+    when: {field: regions, op: ">", value: 1}
+    then: {add: [dns_geo, multi_region_replication]}
+    why: Serving from several regions needs geo routing and replicated data.
+
+  - id: RE003
+    name: Four nines needs a second region
+    priority: 70
+    when: {field: availability, op: ">=", value: 99.99}
+    then: {add: [dns_geo, multi_region_replication]}
+    why: 99.99% leaves under an hour of downtime a year; one region outage would break it.
+
+  - id: RE004
+    name: Point-in-time recovery for tight RPO
+    priority: 70
+    when: {field: rpo_minutes, op: "<=", value: 15}
+    then: {set: {backup_strategy: point-in-time-recovery}}
+    why: Nightly snapshots lose up to a day; WAL archiving restores to any second.
+
+  - id: RE005
+    name: Zero data loss
+    priority: 75
+    when: {field: rpo_minutes, op: "<=", value: 1}
+    then: {set: {backup_strategy: continuous-cross-region, replication_mode: sync}}
+    why: An RPO near zero means a write isn't done until a second copy, in another place, has it.
+
+  - id: RE006
+    name: Automatic failover for tight RTO
+    priority: 70
+    when: {field: rto_minutes, op: "<=", value: 30}
+    then: {set: {failover: automatic}}
+    why: A human can't be paged, diagnose and promote a replica in under half an hour reliably.
+
+  - id: RE007
+    name: Manual failover is acceptable for relaxed targets
+    priority: 30
+    when:
+      all:
+        - {field: availability, op: "<", value: 99.9}
+        - {field: rto_minutes, op: ">=", value: 120}
+    then: {set: {failover: manual}}
+    why: Manual promotion avoids split-brain risk when an hour of downtime is tolerable.
+
+  - id: RE008
+    name: Active-active for global eventual systems
+    priority: 70
+    when:
+      all:
+        - {field: regions, op: ">", value: 1}
+        - {field: consistency, op: "==", value: eventual}
+        - {field: availability, op: ">=", value: 99.99}
+    then: {set: {multi_region_mode: active-active}}
+    why: Eventual data can accept writes everywhere; each region keeps serving if another fails.
+
+  - id: RE009
+    name: Quorum writes for replicated stores
+    priority: 40
+    when:
+      all:
+        - {field: consistency, op: "==", value: eventual}
+        - {field: availability, op: ">=", value: 99.95}
+    then: {set: {replication_mode: quorum}}
+    why: Quorum reads and writes keep data available through a node loss without losing acknowledged writes.
+
+  - id: RE010
+    name: Canary releases for four nines
+    priority: 40
+    when: {field: availability, op: ">=", value: 99.99}
+    then: {add: [feature_flags], set: {deploy_strategy: canary}}
+    why: Expose new code to a sliver of traffic first; a bad deploy is the most common outage.
+
+  - id: RE011
+    name: Blue-green releases for high availability
+    priority: 30
+    when: {field: availability, op: ">=", value: 99.95}
+    then: {set: {deploy_strategy: blue-green}}
+    why: Switch traffic to a fully warmed new version and switch back instantly if it misbehaves.
+
+  - id: RE012
+    name: Feature flags for large teams
+    priority: 30
+    when: {field: team_size, op: "==", value: large}
+    then: {add: [feature_flags]}
+    why: Many teams shipping into one product need to decouple deploy from release.

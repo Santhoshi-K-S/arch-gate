@@ -1,0 +1,70 @@
+version: 2
+
+rules:
+  - id: AS001
+    name: Async notifications
+    priority: 40
+    covers: [notifications]
+    when: {field: features, op: contains, value: notifications}
+    then: {add: [message_queue, worker_pool, notification_service]}
+    why: Sending email/push inline slows requests; queue it and let workers deliver.
+
+  - id: AS002
+    name: Dedupe notifications at scale
+    priority: 40
+    when:
+      all:
+        - {field: features, op: contains, value: notifications}
+        - {field: peak_qps, op: ">=", value: 1000}
+    then: {set: {idempotency: idempotency-keys}}
+    why: Retries are inevitable at this volume; idempotency keys stop users getting the same push twice.
+
+  - id: AS003
+    name: Background jobs
+    priority: 40
+    covers: [batch_jobs]
+    when: {field: features, op: contains, value: batch_jobs}
+    then: {add: [scheduler, message_queue, worker_pool]}
+    why: Scheduled and long-running work belongs outside the request path.
+
+  - id: AS004
+    name: Buffer bursty eventual writes
+    priority: 30
+    when:
+      all:
+        - {field: consistency, op: "==", value: eventual}
+        - {field: peak_write_qps, op: ">=", value: 2000}
+    then: {add: [message_queue, worker_pool]}
+    why: A queue smooths write bursts when callers don't need the write to be visible immediately.
+
+  - id: AS005
+    name: Ordered processing per key
+    priority: 60
+    when: {field: ordering, op: "==", value: per_key}
+    then: {set: {queue_ordering: per-key}}
+    why: Partition by key so events for one entity are processed in order without a global bottleneck.
+
+  - id: AS006
+    name: Global ordering
+    priority: 60
+    when: {field: ordering, op: "==", value: global}
+    then: {set: {queue_ordering: global}}
+    why: Total order is expensive (single partition); only use it when the domain truly needs it.
+
+  - id: AS007
+    name: Exactly-once counting for ordered analytics
+    priority: 60
+    when:
+      all:
+        - {field: features, op: contains, value: analytics}
+        - {field: ordering, op: "==", value: per_key}
+    then: {set: {queue_delivery: effectively-once}}
+    why: Billing-grade counts can't double count on retries; use idempotent sinks or transactional commits.
+
+  - id: AS008
+    name: Media processing
+    priority: 40
+    covers: [media]
+    when: {field: features, op: contains, value: media}
+    then: {add: [media_pipeline, message_queue, worker_pool]}
+    why: Transcoding and thumbnailing are slow; do them asynchronously.

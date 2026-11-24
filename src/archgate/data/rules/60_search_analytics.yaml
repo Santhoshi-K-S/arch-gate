@@ -1,0 +1,86 @@
+version: 2
+
+rules:
+  - id: SA001
+    name: Search
+    priority: 40
+    covers: [search]
+    when: {field: features, op: contains, value: search}
+    then: {add: [search_index, message_queue, worker_pool], set: {search_sync: async-indexer}}
+    why: Full-text search needs a dedicated index kept in sync by background indexers.
+
+  - id: SA002
+    name: Change data capture for search at write scale
+    priority: 45
+    when:
+      all:
+        - {field: features, op: contains, value: search}
+        - {field: peak_write_qps, op: ">=", value: 100}
+    then: {add: [cdc_pipeline], set: {search_sync: change-data-capture}}
+    why: Dual writes drift; streaming the database's change log keeps the index honest.
+
+  - id: SA003
+    name: Analytics pipeline
+    priority: 40
+    covers: [analytics]
+    when: {field: features, op: contains, value: analytics}
+    then: {add: [event_stream, data_warehouse]}
+    why: Stream events to a warehouse so analytics never load the operational database.
+
+  - id: SA004
+    name: Streaming aggregation
+    priority: 40
+    when:
+      all:
+        - {field: features, op: contains, value: analytics}
+        - any:
+            - {field: data_model, op: "==", value: time_series}
+            - {field: ordering, op: "==", value: per_key}
+            - {field: peak_write_qps, op: ">=", value: 5000}
+    then: {add: [stream_processor]}
+    why: At this event rate dashboards need windowed aggregates computed as data arrives.
+
+  - id: SA005
+    name: Offline processing at scale
+    priority: 40
+    when:
+      all:
+        - {field: features, op: contains, value: analytics}
+        - {field: daily_active_users, op: ">=", value: 10000000}
+    then: {add: [batch_processing]}
+    why: Large backfills, reconciliation and model building are cheapest as batch jobs.
+
+  - id: SA006
+    name: Feed the warehouse from the database
+    priority: 40
+    when:
+      all:
+        - {field: features, op: contains, value: analytics}
+        - {field: consistency, op: "==", value: strong}
+    then: {add: [cdc_pipeline]}
+    why: Capture changes from the system of record instead of writing to two places.
+
+  - id: SA007
+    name: Recommendations
+    priority: 40
+    covers: [recommendations]
+    when: {field: features, op: contains, value: recommendations}
+    then:
+      add: [ml_model_serving, feature_store, event_stream, data_warehouse, batch_processing, cache]
+    why: Train offline from behaviour events, serve online from a feature store, cache hot results.
+
+  - id: SA008
+    name: Semantic search over documents
+    priority: 40
+    covers: [semantic_search]
+    when: {field: features, op: contains, value: semantic_search}
+    then: {add: [vector_db, ml_model_serving, object_storage, message_queue, worker_pool]}
+    why: Embed documents asynchronously, store vectors for similarity search, keep originals in object storage.
+
+  - id: SA009
+    name: Location search
+    priority: 40
+    covers: [geo]
+    when: {field: features, op: contains, value: geo}
+    then: {add: [geo_index]}
+    why: Nearby-search needs a spatial index (geohash or quadtree).

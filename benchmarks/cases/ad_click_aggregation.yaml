@@ -1,0 +1,21 @@
+title: Ad click aggregation
+notes: Count clicks per ad per minute exactly once; reconcile with a batch job.
+requirements:
+  name: Ad Clicks
+  daily_active_users: 100_000_000
+  requests_per_user_per_day: 5
+  read_write_ratio: 0.2
+  avg_write_kb: 0.3
+  latency_p99_ms: 1000
+  availability: 99.95
+  consistency: eventual
+  ordering: per_key
+  write_pattern: append_only
+  features: [analytics]
+expect:
+  must: [event_stream, stream_processor, data_warehouse, batch_processing,
+         {any_of: [wide_column_store, key_value_store]}]
+  must_not: [websocket_gateway, postgres]
+  nice: [object_storage, cache, time_series_db, dead_letter_queue, message_queue, worker_pool,
+         api_gateway, rate_limiter, id_generator, multi_region_replication, dns_geo]
+  settings: {queue_delivery: effectively-once}

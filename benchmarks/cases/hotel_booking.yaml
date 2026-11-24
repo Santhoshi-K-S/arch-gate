@@ -1,0 +1,19 @@
+title: Hotel booking
+notes: Inventory must never double-book; search over listings; booking saga with payment.
+requirements:
+  name: Hotel Booking
+  daily_active_users: 1_000_000
+  requests_per_user_per_day: 40
+  read_write_ratio: 30
+  avg_write_kb: 2
+  latency_p99_ms: 300
+  availability: 99.95
+  consistency: strong
+  write_pattern: update_heavy
+  features: [search, payments, notifications]
+expect:
+  must: [search_index, payment_gateway, cache, message_queue, workflow_engine,
+         {any_of: [postgres, sharded_sql]}]
+  must_not: [wide_column_store, document_store, websocket_gateway]
+  nice: [db_replicas, notification_service, cdc_pipeline, ledger, api_gateway, rate_limiter]
+  settings: {idempotency: idempotency-keys, read_consistency: linearizable}

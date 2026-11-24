@@ -1,0 +1,26 @@
+title: Digital wallet / payments platform
+notes: Money movement needs a ledger, idempotency, audit, PCI scope reduction, zero data loss.
+requirements:
+  name: Payments Wallet
+  daily_active_users: 5_000_000
+  requests_per_user_per_day: 10
+  read_write_ratio: 5
+  avg_write_kb: 1
+  latency_p99_ms: 300
+  availability: 99.99
+  consistency: strong
+  regions: 2
+  ordering: per_key
+  rpo_minutes: 0
+  rto_minutes: 15
+  compliance: [pci, soc2]
+  features: [payments, notifications]
+expect:
+  must: [ledger, payment_gateway, tokenization_vault, audit_log, kms, workflow_engine,
+         message_queue, dead_letter_queue, multi_region_replication, backup_service,
+         {any_of: [sharded_sql, postgres]}]
+  must_not: [wide_column_store, document_store, key_value_store]
+  nice: [secrets_manager, waf, api_gateway, rate_limiter, notification_service, db_replicas,
+         worker_pool, dns_geo, id_generator, cache]
+  settings: {idempotency: idempotency-keys, queue_delivery: effectively-once,
+             backup_strategy: continuous-cross-region, failover: automatic}

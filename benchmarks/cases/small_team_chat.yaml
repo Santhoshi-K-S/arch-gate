@@ -1,0 +1,18 @@
+title: Small team chat
+notes: Same feature as a messenger but tiny; should not be over-engineered.
+requirements:
+  name: Team Chat
+  daily_active_users: 20_000
+  requests_per_user_per_day: 50
+  read_write_ratio: 2
+  avg_write_kb: 1
+  latency_p99_ms: 200
+  availability: 99.9
+  consistency: eventual
+  budget: low
+  team_size: small
+  features: [chat]
+expect:
+  must: [websocket_gateway, pubsub, postgres, db_replicas]
+  must_not: [wide_column_store, sharded_sql, service_mesh, multi_region_replication, api_gateway]
+  nice: [presence_service]

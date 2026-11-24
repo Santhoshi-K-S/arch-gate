@@ -1,0 +1,32 @@
+{
+  "components": [
+    "client",
+    "cdn",
+    "load_balancer",
+    "auth_service",
+    "app_service",
+    "ml_model_serving",
+    "postgres",
+    "db_replicas",
+    "vector_db",
+    "object_storage",
+    "backup_service",
+    "message_queue",
+    "dead_letter_queue",
+    "worker_pool",
+    "monitoring"
+  ],
+  "settings": {
+    "autoscaling": "cpu-based",
+    "backup_strategy": "daily-snapshot",
+    "deploy_strategy": "rolling",
+    "failover": "automatic",
+    "media_delivery": "public",
+    "queue_delivery": "at-least-once",
+    "queue_ordering": "none",
+    "read_consistency": "eventual",
+    "replication_mode": "async"
+  },
+  "confidence": "high",
+  "findings": []
+}

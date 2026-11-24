@@ -1,0 +1,19 @@
+title: YouTube-style video platform
+notes: Huge uploads, transcoding pipeline, CDN delivery, view analytics.
+requirements:
+  name: Video Platform
+  daily_active_users: 30_000_000
+  requests_per_user_per_day: 20
+  read_write_ratio: 200
+  avg_write_kb: 50_000
+  latency_p99_ms: 300
+  availability: 99.95
+  consistency: eventual
+  features: [media, search, analytics, notifications]
+expect:
+  must: [object_storage, cdn, media_pipeline, message_queue, worker_pool, search_index,
+         event_stream, data_warehouse,
+         {any_of: [wide_column_store, key_value_store, document_store]}]
+  must_not: [postgres, websocket_gateway]
+  nice: [cache, notification_service, stream_processor, batch_processing, api_gateway]
+  settings: {media_delivery: signed-urls}

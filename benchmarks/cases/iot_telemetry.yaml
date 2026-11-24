@@ -1,0 +1,19 @@
+title: IoT telemetry ingestion
+notes: Millions of devices sending small readings every minute; alerts on thresholds.
+requirements:
+  name: IoT Telemetry
+  daily_active_users: 1_000_000
+  requests_per_user_per_day: 1440
+  read_write_ratio: 0.05
+  avg_write_kb: 0.5
+  latency_p99_ms: 2000
+  availability: 99.9
+  consistency: eventual
+  data_model: time_series
+  write_pattern: append_only
+  features: [analytics, notifications]
+expect:
+  must: [event_stream, stream_processor, time_series_db, notification_service]
+  must_not: [websocket_gateway, cdn, postgres]
+  nice: [object_storage, data_warehouse, message_queue, worker_pool, rate_limiter, api_gateway,
+         wide_column_store, key_value_store, dead_letter_queue, batch_processing]

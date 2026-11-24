@@ -1,0 +1,21 @@
+title: Multi-tenant B2B CRM
+notes: Tenant isolation, SSO, audit trail, SOC 2 and GDPR, public API with quotas.
+requirements:
+  name: SaaS CRM
+  daily_active_users: 300_000
+  requests_per_user_per_day: 100
+  read_write_ratio: 10
+  avg_write_kb: 2
+  latency_p99_ms: 300
+  availability: 99.95
+  consistency: strong
+  multi_tenant: true
+  compliance: [soc2, gdpr]
+  features: [search, analytics, notifications, public_api]
+expect:
+  must: [identity_provider, audit_log, search_index, api_gateway, rate_limiter, kms,
+         secrets_manager, {any_of: [postgres, sharded_sql]}]
+  must_not: [wide_column_store, document_store]
+  nice: [cdc_pipeline, event_stream, data_warehouse, cache, db_replicas, message_queue,
+         worker_pool, notification_service, backup_service, waf, connection_pooler]
+  settings: {tenancy_model: shared-schema}

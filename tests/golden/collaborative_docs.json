@@ -1,0 +1,33 @@
+{
+  "components": [
+    "client",
+    "load_balancer",
+    "api_gateway",
+    "rate_limiter",
+    "auth_service",
+    "app_service",
+    "websocket_gateway",
+    "presence_service",
+    "pubsub",
+    "cache",
+    "sharded_sql",
+    "backup_service",
+    "id_generator",
+    "monitoring"
+  ],
+  "settings": {
+    "autoscaling": "cpu-based",
+    "backup_strategy": "daily-snapshot",
+    "cache_strategy": "cache-aside",
+    "deploy_strategy": "blue-green",
+    "failover": "automatic",
+    "id_scheme": "snowflake",
+    "rate_limit_algorithm": "token-bucket",
+    "read_consistency": "read-your-writes",
+    "realtime_transport": "websocket",
+    "replication_mode": "async",
+    "shard_key": "entity_id"
+  },
+  "confidence": "high",
+  "findings": []
+}

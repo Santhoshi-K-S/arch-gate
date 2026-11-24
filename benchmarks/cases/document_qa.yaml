@@ -1,0 +1,17 @@
+title: Document Q&A assistant (RAG)
+notes: Upload documents, embed them, retrieve by similarity, answer with a model.
+requirements:
+  name: Document QA
+  daily_active_users: 100_000
+  requests_per_user_per_day: 20
+  read_write_ratio: 50
+  avg_write_kb: 5
+  latency_p99_ms: 3000
+  availability: 99.9
+  consistency: eventual
+  features: [semantic_search, file_upload]
+expect:
+  must: [vector_db, ml_model_serving, object_storage, message_queue, worker_pool]
+  must_not: [sharded_sql, wide_column_store, websocket_gateway]
+  nice: [cache, cdn, postgres, document_store, db_replicas, rate_limiter, api_gateway,
+         dead_letter_queue]

@@ -1,0 +1,11 @@
+name: URL Shortener
+description: Create short links and redirect visitors to the original URL.
+daily_active_users: 10_000_000
+requests_per_user_per_day: 10
+read_write_ratio: 100
+avg_write_kb: 0.5
+latency_p99_ms: 50
+availability: 99.95
+consistency: eventual
+retention_years: 5
+features: [analytics]

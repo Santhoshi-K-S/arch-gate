@@ -1,0 +1,25 @@
+{
+  "components": [
+    "client",
+    "cdn",
+    "load_balancer",
+    "auth_service",
+    "app_service",
+    "postgres",
+    "db_replicas",
+    "object_storage",
+    "backup_service",
+    "monitoring"
+  ],
+  "settings": {
+    "autoscaling": "cpu-based",
+    "backup_strategy": "daily-snapshot",
+    "deploy_strategy": "rolling",
+    "failover": "automatic",
+    "media_delivery": "public",
+    "read_consistency": "eventual",
+    "replication_mode": "async"
+  },
+  "confidence": "high",
+  "findings": []
+}

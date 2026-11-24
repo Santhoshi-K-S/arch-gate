@@ -1,0 +1,18 @@
+title: Web crawler
+notes: Internal batch system; frontier queue, politeness, raw pages in object storage.
+requirements:
+  name: Web Crawler
+  daily_active_users: 100
+  requests_per_user_per_day: 10_000_000
+  read_write_ratio: 1
+  avg_write_kb: 100
+  latency_p99_ms: 5000
+  availability: 99.5
+  consistency: eventual
+  write_pattern: append_only
+  features: [batch_jobs, search]
+expect:
+  must: [scheduler, message_queue, worker_pool, object_storage, search_index,
+         {any_of: [wide_column_store, key_value_store]}]
+  must_not: [websocket_gateway, cdn, payment_gateway]
+  nice: [batch_processing, dead_letter_queue, cache, id_generator]
