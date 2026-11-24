@@ -1,16 +1,96 @@
 # ArchGate
 
-Requirements in, reviewed system design out. Rule-based, traceable, and human-approved before anything gets built.
+**Requirements in, reviewed system design out.**
+A system design generator where deterministic rules make the decisions, an LLM only fills the
+gaps, and nothing ships until a human approves it.
 
-ArchGate is a hybrid design generator. Deterministic code does everything it can (capacity math,
-component selection, validation, auto-fixes). A small open model, run locally through Ollama,
-only fills the gaps the rules can't cover, and everything it suggests is checked by the same
-validator and marked as model-suggested. Nothing is final until a person approves it.
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![Tests](https://img.shields.io/badge/tests-98%20passing-brightgreen)
+![Benchmark](https://img.shields.io/badge/benchmark-29%2F29-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-## How a run works
+**🚀 Live demo: [archgate.onrender.com](https://archgate.onrender.com)**
+<sub>(free hosting: the first load may take ~30 seconds while the server wakes up)</sub>
+
+```bash
+$ archgate design examples/chat_app.yaml
+Chat App: 20 components (20 from rules, 0 suggested by the model)
+confidence: high   llm calls: 0
+```
+
+---
+
+## Why I built this
+
+Most "AI architect" tools ask an LLM for a design and hope for the best. The output looks
+plausible, but you can't tell **why** a component is there, you get a different answer each
+time, and nobody signs off on it.
+
+I wanted to see how far I could get by doing it the other way round:
+
+- **Code first.** Capacity math, component selection, validation and fixes are all deterministic.
+- **The model is a fallback.** It runs only when no rule covers a requirement, it can only pick
+  from a fixed catalog, and every suggestion goes through the same validator as everything else.
+- **People approve.** Every run ends in `AWAITING_APPROVAL`, and every decision is traced back to
+  the rule, check, model call or person that made it.
+
+The same pattern (guardrailed LLM + rule engine + audit trail + human gate) applies to any
+high-stakes generation problem, not just architecture.
+
+## Highlights
+
+| | |
+|---|---|
+| 🧠 **Rule engine** | 90 YAML rules across 12 areas (traffic, data, caching, reliability, security, compliance, cost…) with priority bands to settle conflicts |
+| 📐 **Capacity estimator** | Peak QPS, read/write split, replicated storage and egress from plain requirements |
+| ✅ **Validator + auto-repair** | Detects single points of failure, consistency mismatches, capacity and latency problems, missing dependencies; fixes what it can deterministically |
+| 🤖 **Guardrailed LLM layer** | Optional local model (Ollama, `qwen2.5`). Closed catalog, can't remove rule-backed components, per-run budget on calls, retries and time |
+| 🔍 **Full traceability** | Every component and setting records who decided it (`rule:CA001`, `llm`, `human`…) and why; `trace.jsonl` logs every step |
+| 🚦 **Human approval gate** | Explicit state machine; blocked designs need `--force`; confidence is rated `high` / `review_needed` / `blocked` |
+| 📈 **Learns from approvals** | `archgate promote` turns an approved model suggestion into a new rule, so the model isn't needed next time |
+| 🌐 **Web UI** | FastAPI + Jinja + Mermaid, SVG/PNG diagram downloads, SQLite or Postgres, one-click Render deploy |
+| 🧪 **Measured, not guessed** | 29-case benchmark, golden snapshot tests, 300-case property tests and a rule auditor |
+
+## What you get
+
+For each run ArchGate writes a design doc with requirements, capacity estimate, a Mermaid
+diagram, and the reasoning behind every decision:
+
+| Component | Decided by | Why |
+|---|---|---|
+| WebSocket Gateway | `rule:RT001` | Push-based updates need persistent connections and fan-out between gateway nodes. |
+| Presence Service | `rule:RT003` | Chat users expect online status and typing indicators. |
+| Wide-Column Store (Cassandra) | `rule:DS002`, `rule:RT004` | Eventual consistency lets you trade transactions for near-linear write and storage scale. Message history is append-heavy and read by conversation. |
+| CDN | `rule:DM004` | Blobs belong in object storage served through a CDN, not in the database. |
+
+| Setting | Value | Decided by | Why |
+|---|---|---|---|
+| `idempotency` | idempotency-keys | `rule:AS002` | Retries are inevitable at this volume; idempotency keys stop users getting the same push twice. |
+| `backup_strategy` | daily-snapshot | `rule:BA003` | Bad deploys and accidental deletes happen; replicas copy them, backups don't. |
+
+It also lists components that were **considered and rejected** (with the reason), and stamps the
+run with a hash of the exact rules and catalog used, so any design can be reproduced later.
+
+## How it works
 
 ```
 INTAKE → ESTIMATE → RULES → (PROPOSE) → VALIDATE ⇄ REPAIR → EXPLAIN → AWAITING_APPROVAL → APPROVED / REJECTED
+```
+
+```mermaid
+flowchart LR
+    R[Requirements<br/>YAML or free text] --> E[Estimator]
+    E --> RE[Rule engine<br/>90 rules]
+    RE -->|gap?| L[LLM proposes<br/>closed catalog]
+    RE --> V[Validator]
+    L --> V
+    V -->|fails| FX[Repair<br/>code first, then LLM]
+    FX --> V
+    V -->|passes| X[Explain]
+    X --> H{Human gate}
+    H -->|approve| A[Approved]
+    H -->|reject| J[Rejected]
+    A -.promote.-> RE
 ```
 
 | Step | Done by | What happens |
@@ -24,56 +104,87 @@ INTAKE → ESTIMATE → RULES → (PROPOSE) → VALIDATE ⇄ REPAIR → EXPLAIN 
 | Explain | model (optional) | Short trade-off notes; rule rationale is always included |
 | Gate | human | Approve or reject with a note; blocked designs need `--force` |
 
-Guardrails:
+### Guardrails on the model
 
-- **Closed catalog.** The model can only choose from the component ids in `data/components.yaml`.
-- **No silent removals.** The model can't remove rule-backed components unless a validation failure involves them.
-- **Explicit states.** Only the transitions listed in `pipeline.TRANSITIONS` can happen.
-- **Budgets.** Each run has a cap on model calls, repair rounds and wall time. When it hits a cap it escalates to a human instead of retrying.
-- **Full trace.** Every decision is logged to `trace.jsonl` with its actor (`code`, `rule`, `validator`, `llm`, `human`).
-- **Confidence.** Each run is rated `high` (rules only, all checks pass), `review_needed` (the model was involved, or something is unresolved) or `blocked` (a check still fails).
+- **Closed catalog.** The model can only choose from the 53 component ids in `data/components.yaml`.
+- **No silent removals.** It can't remove rule-backed components unless a validation failure involves them.
+- **Explicit states.** Only the transitions in `pipeline.TRANSITIONS` can happen.
+- **Budgets.** Each run caps model calls, repair rounds and wall time. When it hits a cap it escalates to a human instead of retrying.
+- **Everything is labelled.** Model suggestions are marked as such and lower the run's confidence to `review_needed`.
+
+## Engineering decisions
+
+A few choices I made on purpose, and the trade-offs:
+
+- **Rules as data, not code.** Rules are YAML with a small condition language
+  (`all` / `any` / `not`, `>= in contains`…). Adding a rule doesn't need a code change, and
+  `archgate check-kb` fails loudly on unknown fields, components or values.
+- **Priority bands for conflicts.** Compliance (90) beats correctness (80) beats reliability (70)
+  beats scale (60) beats cost (50). Conflicts are settled the same way every time and can be explained.
+- **Deterministic repair before model repair.** Most validation failures (e.g. "99.9% availability
+  with one database") have a known fix. The model is only asked about what's left, which keeps
+  runs cheap, fast and reproducible.
+- **Local, free model.** Ollama with a 3B model means no API keys and no data leaving the machine.
+  Everything still works with `--no-llm`.
+- **Honest benchmarks.** The 29 reference designs were written alongside the rules, so 100% shows
+  the rules are *consistent*, not that they're *right*. Reference cases written by someone else
+  would be the real test.
+
+## Quality and testing
+
+```bash
+uv run pytest            # 98 tests
+uv run archgate bench    # passed 29/29 (100%), component recall 100%, forbidden 0, settings 100%
+uv run archgate audit-rules
+```
+
+- **Benchmark:** 29 reference problems (URL shortener, ride sharing, payments wallet, healthcare
+  portal, flash-sale ticketing, video platform…), each with required, forbidden and optional
+  components and expected settings.
+- **Golden snapshots:** CI fails if a rule change moves any benchmark design.
+- **Property tests:** 300 random requirement sets checking invariants such as "exactly one primary
+  database", "every dependency met", "three nines never has a single database" and determinism.
+- **Rule audit:** finds dead, always-on, duplicate and contested rules.
 
 ## Quick start
 
 ```bash
+git clone https://github.com/Santhoshi-K-S/arch-gate.git && cd arch-gate
 uv sync
+
 uv run archgate design examples/news_feed.yaml          # rules only if Ollama isn't running
-uv run archgate show runs/<run-id>
+uv run archgate show    runs/<run-id>
 uv run archgate approve runs/<run-id> --note "looks good"
 uv run archgate reject  runs/<run-id> --note "needs multi-region writes"
 ```
 
-To turn on the model layer (free, runs locally):
+Turn on the model layer (free, runs locally):
 
 ```bash
 ollama pull qwen2.5:3b
-uv run archgate design examples/online_store.yaml
 uv run archgate design --text "A ride-sharing app for 2M daily riders with live driver tracking"
 ```
 
-Use `--model`, `ARCHGATE_MODEL` or `ARCHGATE_OLLAMA_URL` to point at a different model or server, and `--no-llm` to force rules only.
+Use `--model`, `ARCHGATE_MODEL` or `ARCHGATE_OLLAMA_URL` to change the model or server, and
+`--no-llm` to force rules only.
 
-Each run writes to `runs/<run-id>/`:
+### Web UI
 
-| File | Contents |
-|---|---|
-| `design.md` | Design doc: requirements, estimates, Mermaid diagram, who decided each component, trade-offs |
-| `design.mmd` | The diagram on its own |
-| `trace.jsonl` | Every decision, in order |
-| `run.json` | Full run state, used by `approve` and `reject` |
-| `requirements.yaml` | The requirements the run used; edit and rerun |
-
-## Web UI (prototype)
-
-A rules-only web UI with diagram downloads (SVG, PNG, Mermaid). It has no model, no approval
-gate and no login. See [WEB.md](WEB.md) for running it locally and deploying to Render.
+Try it live at **[archgate.onrender.com](https://archgate.onrender.com)**, or run it locally:
 
 ```bash
 uv sync --extra web
 uv run archgate serve      # http://127.0.0.1:8000
 ```
 
-## Requirements format
+A rules-only prototype: fill in a form (or paste YAML), get the diagram, components and
+reasoning, and download SVG / PNG / Mermaid / Markdown. It has no model, no approval gate and no
+login. See [WEB.md](WEB.md) for details and deploying to Render.
+
+## Reference
+
+<details>
+<summary><b>Requirements format</b></summary>
 
 ```yaml
 name: Chat App
@@ -106,21 +217,26 @@ rto_minutes: 240             # acceptable downtime
 Features with rules today: `chat`, `realtime`, `collaboration`, `feed`, `media`, `file_upload`,
 `search`, `semantic_search`, `recommendations`, `payments`, `geo`, `notifications`, `analytics`,
 `batch_jobs`, `public_api`, `short_links`. Any other tag goes to the model or is flagged for review.
+</details>
 
-## What a design contains
+<details>
+<summary><b>Run output files</b></summary>
 
-- **Components:** 53 building blocks, each with who added it and why.
-- **Configuration decisions:** 21 settings such as `shard_key`, `cache_strategy`,
-  `queue_delivery`, `backup_strategy`, `failover`, `tenancy_model`. A setting is dropped
-  automatically if its component isn't in the design.
-- **Considered and rejected:** components that were proposed and then removed, with the reason.
-- **Versions:** archgate version and a hash of the exact rules and catalog used, so any run can
-  be reproduced or explained later.
+Each run writes to `runs/<run-id>/`:
 
-## The rule base
+| File | Contents |
+|---|---|
+| `design.md` | Design doc: requirements, estimates, Mermaid diagram, who decided each component, trade-offs |
+| `design.mmd` | The diagram on its own |
+| `trace.jsonl` | Every decision, in order, with its actor |
+| `run.json` | Full run state, used by `approve` and `reject` |
+| `requirements.yaml` | The requirements the run used; edit and rerun |
+</details>
 
-Rules live in `src/archgate/data/rules/`, one file per area: baseline, traffic, data, caching,
-async, realtime, search/analytics, reliability, security, compliance, cost, domain.
+<details>
+<summary><b>Writing rules</b></summary>
+
+Rules live in `src/archgate/data/rules/`, one file per area.
 
 ```yaml
 - id: CA001
@@ -134,8 +250,6 @@ async, realtime, search/analytics, reliability, security, compliance, cost, doma
   why: Reads dominate, so caching cuts database load and latency.
 ```
 
-Priority bands (higher wins when rules disagree):
-
 | Band | Priority |
 |---|---|
 | Compliance | 90 |
@@ -147,46 +261,58 @@ Priority bands (higher wins when rules disagree):
 | Optimizations | 30 |
 | Defaults | 10-20 |
 
-- **Fields** in a condition can be any requirement field or estimator output.
+- **Fields** can be any requirement field or estimator output.
 - **Operators:** `> >= < <= == != in contains`, combined with `all`, `any` and `not`.
-- **Actions:** `add`, `remove` and `set` (settings).
-- **Checking:** `uv run archgate check-kb` fails loudly on unknown fields, components or setting values.
+- **Actions:** `add`, `remove` and `set`.
+- After an intended rule change, refresh snapshots with
+  `ARCHGATE_UPDATE_GOLDEN=1 uv run pytest tests/test_golden.py`.
+</details>
 
-## Measuring the rule base
+<details>
+<summary><b>Learning from approved runs</b></summary>
 
-```bash
-uv run archgate bench              # score against 29 reference designs (rules only)
-uv run archgate bench --model qwen2.5:7b
-uv run archgate audit-rules        # dead, always-on, duplicate and contested rules
-```
-
-`benchmarks/cases/` holds one reference problem per file: its requirements, the components a
-solid design must have (`must`, with `any_of` for alternatives), ones it must not have, optional
-ones, and expected settings. A case passes when nothing required is missing, nothing forbidden is
-present and every expected setting matches.
-
-The reference designs were written alongside the rules, so a high score shows the rules are
-consistent with them, not that they are right. Adding cases written by someone else is the best
-way to find real gaps.
-
-Tests also include:
-
-- **Golden snapshots** (`tests/golden/`): CI fails if a rule change moves any benchmark design.
-  Refresh after an intended change with `ARCHGATE_UPDATE_GOLDEN=1 uv run pytest tests/test_golden.py`.
-- **Property tests:** 300 random requirement sets, checking invariants like "one primary
-  database", "every dependency met", "three nines never has a single database" and determinism.
-
-## Learning from approved runs
-
-When the model fills a gap (a feature no rule covers) and a reviewer approves the design:
+When the model fills a gap and a reviewer approves the design:
 
 ```bash
 uv run archgate promote runs/<run-id>
 ```
 
 This drafts a rule from the approved suggestion, shows it, and on confirmation adds it to
-`learned_rules.yaml` (or `--learned-rules PATH`). From then on that feature is handled by a rule,
-with no model call. Learned rules are versioned into the knowledge-base hash like any other.
+`learned_rules.yaml` (or `--learned-rules PATH`). From then on that feature is handled by a rule
+with no model call. Learned rules are included in the knowledge-base hash.
+</details>
+
+## Project layout
+
+```
+src/archgate/
+  cli.py            commands: design, show, approve, reject, promote, bench, audit-rules, check-kb, serve
+  pipeline.py       state machine and run orchestration
+  requirements.py   schema and parsing
+  estimator.py      capacity math
+  rules_engine.py   condition language, priorities, conflict resolution
+  validator.py      checks and deterministic repairs
+  llm.py            Ollama client
+  assistant.py      model tasks; every output is schema-checked before use
+  knowledge.py      loads rules + catalog, computes the knowledge-base hash
+  promote.py        approved suggestion -> new rule
+  benchmark.py      reference-case scoring
+  audit.py          rule-base audit
+  render.py         design doc and Mermaid output
+  trace.py          decision log
+  web/              FastAPI app, forms, storage, templates
+  data/             components.yaml (catalog) and rules/*.yaml
+benchmarks/cases/   29 reference designs
+tests/              unit, golden, property and web tests
+```
+
+## Roadmap
+
+1. ✅ Rule engine, estimator, validator, approval gate
+2. ✅ Benchmark, golden and property tests, rule audit, versioning, rule promotion
+3. ✅ Web UI with diagram export and Render deploy
+4. ⏳ Train a tiny transformer from scratch on rule-generated designs
+5. ⏳ Swap it in behind `LLMClient` and score it with `archgate bench`
 
 ## Development
 
@@ -195,9 +321,6 @@ uv run pytest
 uv run ruff check .
 ```
 
-## Roadmap
+## License
 
-1. Rule engine, estimator, validator, approval gate (done)
-2. Benchmark, golden and property tests, rule audit, versioning, rule promotion (done)
-3. A tiny transformer trained from scratch on rule-generated designs
-4. Swap it in as the model behind `LLMClient` and score it with `archgate bench`
+MIT
