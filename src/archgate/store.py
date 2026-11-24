@@ -42,7 +42,10 @@ def load_run(run_dir: Path) -> Run:
     path = Path(run_dir) / RUN_FILE
     if not path.exists():
         raise ArchGateError(f"no run found at {run_dir}")
-    data = json.loads(path.read_text())
+    return from_dict(json.loads(path.read_text()))
+
+
+def from_dict(data: dict[str, Any]) -> Run:
     return Run(
         run_id=data["run_id"],
         created_at=data["created_at"],

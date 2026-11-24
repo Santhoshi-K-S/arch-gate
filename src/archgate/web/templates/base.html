@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}ArchGate{% endblock %}</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5d6675; --line: #dfe3ea;
+    --accent: #3657d6; --accent-text: #ffffff; --ok: #1f7a4d; --warn: #9a6200; --bad: #b42335;
+    --ok-bg: #e3f4ea; --warn-bg: #fdf1dc; --bad-bg: #fbe3e6; --code: #eef1f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #11141a; --card: #1a1f28; --text: #e6e9ef; --muted: #9aa3b2; --line: #2c3340;
+      --accent: #7b96ff; --accent-text: #0d1020; --ok: #6fd3a0; --warn: #f0b85a; --bad: #ff8592;
+      --ok-bg: #173126; --warn-bg: #352a14; --bad-bg: #3a1a20; --code: #232a36;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); }
+  header { background: var(--card); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1100px; margin: 0 auto; padding: 12px 16px; display: flex;
+         align-items: center; gap: 20px; flex-wrap: wrap; }
+  .brand { font-weight: 700; font-size: 18px; color: var(--text); text-decoration: none; }
+  .bar nav { display: flex; gap: 14px; }
+  .bar nav a { text-decoration: none; color: var(--muted); }
+  .bar nav a:hover { color: var(--text); }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 0 0 12px; }
+  .muted { color: var(--muted); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+          padding: 18px; margin: 16px 0; }
+  .btn { display: inline-block; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line);
+         background: var(--card); color: var(--text); text-decoration: none; cursor: pointer;
+         font: inherit; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .btn:hover { filter: brightness(0.97); }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 13px;
+           font-weight: 600; }
+  .badge.high { background: var(--ok-bg); color: var(--ok); }
+  .badge.review_needed { background: var(--warn-bg); color: var(--warn); }
+  .badge.blocked { background: var(--bad-bg); color: var(--bad); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line);
+           vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .scroll { overflow-x: auto; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  footer { max-width: 1100px; margin: 0 auto; padding: 0 16px 24px; color: var(--muted);
+           font-size: 13px; }
+</style>
+{% block head %}{% endblock %}
+</head>
+<body>
+<header><div class="bar">
+  <a class="brand" href="/">ArchGate</a>
+  <nav><a href="/">Designs</a><a href="/new">New design</a></nav>
+</div></header>
+<main>{% block content %}{% endblock %}</main>
+<footer>archgate {{ version }} · knowledge base <code>{{ kb_version }}</code> ({{ rule_count }} rules) ·
+  rules only, no model · prototype: approval happens in the CLI</footer>
+</body>
+</html>

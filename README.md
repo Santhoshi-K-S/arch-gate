@@ -63,6 +63,16 @@ Each run writes to `runs/<run-id>/`:
 | `run.json` | Full run state, used by `approve` and `reject` |
 | `requirements.yaml` | The requirements the run used; edit and rerun |
 
+## Web UI (prototype)
+
+A rules-only web UI with diagram downloads (SVG, PNG, Mermaid). It has no model, no approval
+gate and no login. See [WEB.md](WEB.md) for running it locally and deploying to Render.
+
+```bash
+uv sync --extra web
+uv run archgate serve      # http://127.0.0.1:8000
+```
+
 ## Requirements format
 
 ```yaml

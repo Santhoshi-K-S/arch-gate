@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}New design · ArchGate{% endblock %}
+{% block head %}
+<style>
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  .hint { font-weight: 400; color: var(--muted); font-size: 12px; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px;
+    background: var(--bg); color: var(--text); font: inherit; }
+  textarea { font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+  details > summary { cursor: pointer; font-weight: 600; margin: 4px 0 12px; }
+  .checks { display: flex; gap: 16px; flex-wrap: wrap; }
+  .checks label { font-weight: 400; display: flex; gap: 6px; align-items: center; }
+  .errors { background: var(--bad-bg); color: var(--bad); border-radius: 8px; padding: 10px 14px; }
+</style>
+{% endblock %}
+{% block content %}
+<h1>New design</h1>
+<p class="muted">Fill in what you know. Blank optional fields use sensible defaults.</p>
+
+{% if errors %}
+<div class="errors"><strong>Please fix:</strong>
+  <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+<form method="post" action="/designs">
+<div class="card">
+  <h2>Basics</h2>
+  <div class="grid">
+    <div><label>Name</label><input type="text" name="name" value="{{ values.name or '' }}"></div>
+    <div><label>Daily active users</label><input type="text" name="daily_active_users"
+         placeholder="1,000,000" value="{{ values.daily_active_users or '' }}"></div>
+    <div><label>Requests per user per day</label><input type="text" name="requests_per_user_per_day"
+         placeholder="20" value="{{ values.requests_per_user_per_day or '' }}"></div>
+    <div><label>Reads per write <span class="hint">e.g. 100 = read-heavy</span></label>
+         <input type="text" name="read_write_ratio" placeholder="10"
+         value="{{ values.read_write_ratio or '' }}"></div>
+    <div><label>Average write size (KB)</label><input type="text" name="avg_write_kb"
+         placeholder="1" value="{{ values.avg_write_kb or '' }}"></div>
+    <div><label>p99 latency target (ms)</label><input type="text" name="latency_p99_ms"
+         placeholder="200" value="{{ values.latency_p99_ms or '' }}"></div>
+    <div><label>Availability (%)</label><input type="text" name="availability"
+         placeholder="99.9" value="{{ values.availability or '' }}"></div>
+    <div><label>Consistency</label><select name="consistency">
+      {% for c in choices.consistency %}<option {{ 'selected' if values.consistency == c }}>{{ c }}</option>{% endfor %}
+    </select></div>
+  </div>
+  <div style="margin-top:14px">
+    <label>Features <span class="hint">comma separated. Known: {{ known_features }}</span></label>
+    <input type="text" name="features" placeholder="search, payments, notifications"
+           value="{{ values.features or '' }}">
+  </div>
+  <div style="margin-top:14px">
+    <label>Description <span class="hint">optional</span></label>
+    <input type="text" name="description" value="{{ values.description or '' }}">
+  </div>
+</div>
+
+<div class="card">
+<details {{ 'open' if values.regions or values.compliance }}>
+  <summary>More options</summary>
+  <div class="grid">
+    <div><label>Regions</label><input type="text" name="regions" placeholder="1" value="{{ values.regions or '' }}"></div>
+    <div><label>Retention (years)</label><input type="text" name="retention_years" placeholder="5" value="{{ values.retention_years or '' }}"></div>
+    <div><label>Peak factor</label><input type="text" name="peak_factor" placeholder="3" value="{{ values.peak_factor or '' }}"></div>
+    <div><label>RPO (minutes of data loss)</label><input type="text" name="rpo_minutes" placeholder="60" value="{{ values.rpo_minutes or '' }}"></div>
+    <div><label>RTO (minutes of downtime)</label><input type="text" name="rto_minutes" placeholder="240" value="{{ values.rto_minutes or '' }}"></div>
+    {% for key in ['budget', 'data_model', 'write_pattern', 'traffic_pattern', 'ordering', 'team_size'] %}
+    <div><label>{{ key|replace('_', ' ')|capitalize }}</label><select name="{{ key }}">
+      <option value="">default</option>
+      {% for c in choices[key] %}<option {{ 'selected' if values[key] == c }}>{{ c }}</option>{% endfor %}
+    </select></div>
+    {% endfor %}
+  </div>
+  <div class="checks" style="margin-top:14px">
+    <label><input type="checkbox" name="hot_keys" {{ 'checked' if values.hot_keys }}> Hot keys</label>
+    <label><input type="checkbox" name="multi_tenant" {{ 'checked' if values.multi_tenant }}> Multi-tenant</label>
+    {% for r in regimes %}
+    <label><input type="checkbox" name="compliance" value="{{ r }}"> {{ r|upper }}</label>
+    {% endfor %}
+  </div>
+</details>
+</div>
+
+<div class="card">
+<details {{ 'open' if values.yaml }}>
+  <summary>Or paste requirements YAML</summary>
+  <p class="muted" style="margin-top:0">If filled in, this is used instead of the form above.</p>
+  <textarea name="yaml" rows="12" placeholder="name: Chat App
+daily_active_users: 5_000_000
+requests_per_user_per_day: 60
+read_write_ratio: 2
+avg_write_kb: 1
+latency_p99_ms: 200
+availability: 99.9
+consistency: eventual
+features: [chat, notifications, media]">{{ values.yaml or '' }}</textarea>
+</details>
+</div>
+
+<button class="btn primary" type="submit">Generate design</button>
+</form>
+{% endblock %}

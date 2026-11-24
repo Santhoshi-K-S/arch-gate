@@ -1,0 +1,16 @@
+# Render Blueprint: rules-only web UI on the free plan.
+services:
+  - type: web
+    name: archgate
+    runtime: python
+    plan: free
+    buildCommand: pip install ".[web]"
+    startCommand: uvicorn archgate.web.app:create_app --factory --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      # Without DATABASE_URL designs go to SQLite on the instance disk and are lost on
+      # redeploy or restart. Point it at a Postgres database to keep them.
+      # - key: DATABASE_URL
+      #   value: postgres://...

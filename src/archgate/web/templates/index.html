@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap">
+  <div>
+    <h1>Designs</h1>
+    <p class="muted" style="margin:0">Requirements in, rule-based system design out.</p>
+  </div>
+  <a class="btn primary" href="/new">New design</a>
+</div>
+<div class="card scroll">
+{% if runs %}
+  <table>
+    <tr><th>Name</th><th>Confidence</th><th>Created (UTC)</th></tr>
+    {% for r in runs %}
+    <tr>
+      <td><a href="/runs/{{ r.run_id }}">{{ r.name }}</a></td>
+      <td><span class="badge {{ r.confidence }}">{{ r.confidence|replace('_', ' ') }}</span></td>
+      <td class="muted">{{ r.created_at|replace('T', ' ')|replace('+00:00', '') }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <p class="muted">No designs yet. <a href="/new">Create the first one.</a></p>
+{% endif %}
+</div>
+{% endblock %}

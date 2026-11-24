@@ -82,6 +82,13 @@ def _parser() -> argparse.ArgumentParser:
     prom.add_argument("--yes", action="store_true", help="save without asking")
     prom.set_defaults(handler=_cmd_promote)
 
+    serve = sub.add_parser("serve", help="run the rules-only web UI locally")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--database-url", default=os.environ.get("DATABASE_URL",
+                                                                 "sqlite:///archgate.db"))
+    serve.set_defaults(handler=_cmd_serve)
+
     aud = sub.add_parser("audit-rules", help="find dead, duplicate and contested rules")
     aud.add_argument("--samples", type=int, default=1000)
     aud.add_argument("--seed", type=int, default=7)
@@ -182,6 +189,21 @@ def _cmd_promote(args: argparse.Namespace) -> int:
             return EXIT_OK
     promote.append_rules(args.learned_rules, drafts)
     print(f"saved to {args.learned_rules}. future runs will apply it without the model.")
+    return EXIT_OK
+
+
+def _cmd_serve(args: argparse.Namespace) -> int:
+    try:
+        import uvicorn
+
+        from archgate.web.app import WebConfig, create_app
+    except ImportError as exc:
+        raise ArchGateError('the web UI needs extra packages: uv sync --extra web '
+                            '(or pip install "archgate[web]")') from exc
+    learned = args.learned_rules if args.learned_rules.exists() else None
+    app = create_app(WebConfig(database_url=args.database_url, learned_rules=learned))
+    print(f"ArchGate web UI on http://{args.host}:{args.port}  (rules only)")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
     return EXIT_OK
 
 

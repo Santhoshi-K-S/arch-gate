@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}{{ run.requirements.name }} · ArchGate{% endblock %}
+{% block head %}
+<style>
+  .head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .meta { color: var(--muted); font-size: 14px; }
+  .diagram { background: #ffffff; border-radius: 8px; padding: 12px; overflow-x: auto; min-height: 120px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .notice { border-radius: 8px; padding: 10px 14px; margin: 8px 0; }
+  .notice.bad { background: var(--bad-bg); color: var(--bad); }
+  .notice.warn { background: var(--warn-bg); color: var(--warn); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .stat { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .stat .v { font-size: 20px; font-weight: 700; }
+  .stat .k { color: var(--muted); font-size: 13px; }
+  .src { font-size: 12px; white-space: nowrap; }
+  .src.llm { color: var(--warn); }
+  details > summary { cursor: pointer; font-weight: 600; }
+</style>
+{% endblock %}
+{% block content %}
+{% set req = run.requirements %}{% set est = run.estimate %}
+<div class="head">
+  <div>
+    <h1>{{ req.name }}</h1>
+    <div class="meta">
+      <span class="badge {{ run.confidence }}">{{ run.confidence|replace('_', ' ') }}</span>
+      · {{ run.design.choices|length }} components · {{ run.design.settings|length }} settings
+      · run <code>{{ run.run_id }}</code>
+    </div>
+    {% if req.description %}<p>{{ req.description }}</p>{% endif %}
+  </div>
+  <div class="actions">
+    <a class="btn" href="/runs/{{ run.run_id }}/design.md">Download design doc</a>
+    <a class="btn" href="/runs/{{ run.run_id }}/run.json">Download run (JSON)</a>
+  </div>
+</div>
+
+{% for f in run.findings %}
+<div class="notice bad"><strong>{{ f.check }}</strong> {{ f.message }}</div>
+{% endfor %}
+{% for item in run.unresolved %}
+<div class="notice warn">Needs review: {{ item }}</div>
+{% endfor %}
+
+<div class="card">
+  <div class="head" style="margin-bottom:12px">
+    <h2 style="margin:0">Architecture</h2>
+    <div class="actions">
+      <button class="btn" id="dl-svg" type="button">Download SVG</button>
+      <button class="btn" id="dl-png" type="button">Download PNG</button>
+      <a class="btn" href="/runs/{{ run.run_id }}/diagram.mmd">Download Mermaid</a>
+    </div>
+  </div>
+  <div class="diagram" id="diagram"><pre class="mermaid">{{ diagram }}</pre></div>
+</div>
+
+<div class="card">
+  <h2>Capacity estimate</h2>
+  <div class="stats">
+    <div class="stat"><div class="v">{{ "{:,.0f}".format(est.peak_qps) }}</div><div class="k">peak requests/s</div></div>
+    <div class="stat"><div class="v">{{ "{:,.0f}".format(est.peak_read_qps) }}</div><div class="k">peak reads/s</div></div>
+    <div class="stat"><div class="v">{{ "{:,.0f}".format(est.peak_write_qps) }}</div><div class="k">peak writes/s</div></div>
+    <div class="stat"><div class="v">{{ "{:,.2f}".format(est.storage_tb) }} TB</div><div class="k">storage (raw)</div></div>
+    <div class="stat"><div class="v">{{ "{:,.0f}".format(est.peak_egress_mbps) }}</div><div class="k">peak egress Mbps</div></div>
+  </div>
+</div>
+
+<div class="card scroll">
+  <h2>Components</h2>
+  <table>
+    <tr><th>Component</th><th>Decided by</th><th>Why</th></tr>
+    {% for cid, comp, choice in components %}
+    <tr>
+      <td><strong>{{ comp.label if comp else cid }}</strong><br><code>{{ cid }}</code></td>
+      <td>{% for r in choice.reasons %}<div class="src {{ r.source }}">{{ r.source }}:{{ r.ref }}</div>{% endfor %}</td>
+      <td>{% for why in choice.reasons|map(attribute='why')|unique %}<div>{{ why }}</div>{% endfor %}
+          {% if comp and comp.tradeoff %}<div class="muted">Trade-off: {{ comp.tradeoff }}</div>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% if run.design.settings %}
+<div class="card scroll">
+  <h2>Configuration decisions</h2>
+  <table>
+    <tr><th>Setting</th><th>Value</th><th>Decided by</th><th>Why</th></tr>
+    {% for key, s in run.design.settings|dictsort %}
+    <tr><td><code>{{ key }}</code></td><td><strong>{{ s.value }}</strong></td>
+        <td class="src">{{ s.reason.source }}:{{ s.reason.ref }}</td><td>{{ s.reason.why }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{% if rejected %}
+<div class="card scroll">
+  <h2>Considered and rejected</h2>
+  <table>
+    <tr><th>Component</th><th>Rejected by</th><th>Reason</th></tr>
+    {% for cid, by, why in rejected %}<tr><td><code>{{ cid }}</code></td><td>{{ by }}</td><td>{{ why }}</td></tr>{% endfor %}
+  </table>
+</div>
+{% endif %}
+
+<div class="card scroll">
+  <h2>Requirements</h2>
+  <table>
+    {% for key, value in req.to_dict().items() if key not in ('name', 'description') %}
+    <tr><th style="width:240px">{{ key }}</th>
+        <td>{{ value|join(', ') if value is iterable and value is not string else value }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+<details>
+  <summary>Decision trace ({{ run.trace.events|length }} events)</summary>
+  <div class="scroll" style="margin-top:12px">
+  <table>
+    <tr><th>#</th><th>State</th><th>Actor</th><th>Action</th><th>Detail</th></tr>
+    {% for e in run.trace.events %}
+    <tr><td>{{ e.seq }}</td><td>{{ e.state }}</td><td>{{ e.actor }}</td><td>{{ e.action }}</td>
+        <td><code>{{ e.detail|tojson }}</code></td></tr>
+    {% endfor %}
+  </table>
+  </div>
+</details>
+</div>
+
+<p class="muted">Knowledge base <code>{{ run.versions.knowledge }}</code> ·
+  approval is not available on the web prototype; use <code>archgate design</code> in the CLI for the full gate.</p>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  // plain SVG text labels (not HTML) so the PNG export can draw them on a canvas
+  mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "default",
+                       flowchart: { htmlLabels: false } });
+  const fileBase = {{ run.requirements.name|lower|replace(' ', '-')|tojson }};
+
+  function diagramSvg() {
+    const svg = document.querySelector("#diagram svg").cloneNode(true);
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    return svg;
+  }
+
+  function save(blob, name) {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = name;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  }
+
+  document.getElementById("dl-svg").addEventListener("click", () => {
+    const text = new XMLSerializer().serializeToString(diagramSvg());
+    save(new Blob([text], { type: "image/svg+xml" }), fileBase + ".svg");
+  });
+
+  document.getElementById("dl-png").addEventListener("click", () => {
+    const live = document.querySelector("#diagram svg");
+    const box = live.viewBox.baseVal;
+    const width = box && box.width ? box.width : live.getBoundingClientRect().width;
+    const height = box && box.height ? box.height : live.getBoundingClientRect().height;
+    const svg = diagramSvg();
+    svg.setAttribute("width", width);
+    svg.setAttribute("height", height);
+    const img = new Image();
+    img.onload = () => {
+      const scale = 2;
+      const canvas = document.createElement("canvas");
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => save(blob, fileBase + ".png"), "image/png");
+    };
+    img.src = "data:image/svg+xml;charset=utf-8," +
+      encodeURIComponent(new XMLSerializer().serializeToString(svg));
+  });
+
+  mermaid.run({ querySelector: "#diagram .mermaid" });
+</script>
+{% endblock %}
